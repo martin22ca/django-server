@@ -1,0 +1,16 @@
+
+.venv/
+
+.vscode/
+
+gsalud/__pycache__/
+
+test.py
+
+gsalud/migrations/
+
+gsalud/services/__pycache__/
+
+gsalud/utils/__pycache__/
+
+gsalud/views/__pycache__/
