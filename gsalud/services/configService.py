@@ -10,7 +10,6 @@ def updateConfig(id, newValue):
 
     if serializer.is_valid():
         serializer.save()  # Save the changes to the database
-        print('newval:',newValue)
         return True  # Return True upon successful update
     else:
         print('error:',serializer.error_messages)

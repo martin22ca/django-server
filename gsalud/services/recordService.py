@@ -24,7 +24,6 @@ def updateRecords(updateRecordsIds, updateRecordsData):
             existing_record_hash = record_instance.hashedVal
             if new_record_hash != existing_record_hash:
                 # The hashes don't match, update the record
-                print("Hashes don't match, update for record ID:", update_id)
                 serializer = RecordSerializer(instance=record_instance, data=update_data)
 
                 if serializer.is_valid():

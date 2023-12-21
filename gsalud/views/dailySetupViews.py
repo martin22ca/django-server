@@ -1,4 +1,4 @@
-from logging import config
+import re
 import numpy as np
 import pandas as pd
 import hashlib
@@ -13,7 +13,7 @@ from gsalud.models import Configs, Providers, Records
 from gsalud.services.configService import updateConfig
 from gsalud.services.receiptTypesService import getTypesObj
 from gsalud.services.recordService import insertRecords, updateRecords
-from gsalud.utils.manageDate import handleDateDMY, handleDatetimeToDate
+from gsalud.utils.manageDate import handleDateDMY
 from gsalud.services.recordInfoService import insertRecordsCases, updateRecordsCases
 from gsalud.services.providersService import insertProviders, updateProviders, handlePriority
 
@@ -22,12 +22,11 @@ from gsalud.services.providersService import insertProviders, updateProviders, h
 def post_assignment(request):
     try:
         if request.method == 'POST' and 'file' in request.FILES:
-            configData = string_to_obj(Configs.objects.get(pk=3).value)
-            print(configData)
             receiptTypesObj = getTypesObj()
             uploaded_file = request.FILES['file']
-            df = pd.read_excel(uploaded_file)
-            df = df.replace({np.nan: None})
+            df, id_empty = file_to_df(uploaded_file)
+            configData = string_to_obj(
+                Configs.objects.get(pk=4).value, id_empty)
 
             # --- EXISTING DATA ----
             existingRecords = set(Records.objects.values_list('id', flat=True))
@@ -45,11 +44,15 @@ def post_assignment(request):
 
             for row in df.itertuples(index=False):
                 # --- End of the file ----
-                if row[configData['id_record']] == "Total general":
-                    break
+                if isinstance(row[configData['id_record']], str) and has_non_numeric_chars(row[configData['id_record']]):
+                    # Perform action or stop reading the file
+                    print(f"Found non-numeric value '{row[configData['id_record']]}")
+                    break  # You may want to use break or some other action to stop reading
 
                 id_record = int(row[configData['id_record']])
                 id_provider = int(row[configData['id_provider']])
+                if row[configData['audit_group']]:
+                    audit_group = int(row[configData['audit_group']])
                 # --- Record exists ----
                 if id_record in existingRecords:
                     updateCasesId.append(id_record)
@@ -61,7 +64,7 @@ def post_assignment(request):
                         'id': id_record, 'id_provider': id_provider, 'id_receipt_type': receiptTypesObj[row[configData['id_receipt_type']]],
                         'date_liquid': None, 'date_recep': handleDateDMY(row[configData['date_recep']]), 'date_audi_vto': handleDateDMY(row[configData['date_audi_vto']]),
                         'date_period': handleDateDMY(row[configData['date_period']]), 'record_type': row[configData['record_type']],
-                        'bruto': row[configData['bruto']], 'receipt_num': row[configData['receipt_num']], 'receipt_date': None, 'audit_group': row[configData['audit_group']],
+                        'bruto': row[configData['gross_amount']],'iva_factu': row[configData['invoiced_amount']], 'receipt_num': row[configData['receipt_num']], 'receipt_date': None, 'audit_group': audit_group,
                         'date_vto_carga': handleDateDMY(row[configData['date_audi_vto']]), 'assigned_user': row[configData['entry_user']],
                     })
                     newCases.append(
@@ -124,12 +127,11 @@ def post_assignment(request):
 def post_db(request):
     try:
         if request.method == 'POST' and 'file' in request.FILES:
-            configData = string_to_obj(Configs.objects.get(pk=4).value)
-            print(configData)
             receiptTypesObj = getTypesObj()
             uploaded_file = request.FILES['file']
-            df = pd.read_excel(uploaded_file)
-            df = df.replace({np.nan: None})
+            df, id_empty = file_to_df(uploaded_file)
+            configData = string_to_obj(
+                Configs.objects.get(pk=3).value, id_empty)
 
             existingProviders = set(
                 Providers.objects.values_list('id', flat=True))
@@ -143,41 +145,50 @@ def post_db(request):
             updateRecordsData = []
             updateRecordsIds = []
             for row in df.itertuples(index=False):
-                totalVal = sum(filter(None, [row.exento, row.gravado, row.iva_factu, row.iva_perce, row.iibb]))
+                if row[configData['audit_group']]:
+                    audit_group = int(row[configData['audit_group']])
+                totalVal = sum(filter(None, [row[configData['exento']], row[configData['gravado']],
+                               row[configData['iva_factu']], row[configData['iva_perce']], row[configData['iibb']]]))
                 totalVal = round(totalVal, 2)
 
                 rowRecord = {
-                    'id': row.expe, 'id_provider': row.prestad, 'id_receipt_type': receiptTypesObj[row.compro_tipo],
-                    'date_liquid': handleDatetimeToDate(row.liqui_fecha), 'date_recep': handleDatetimeToDate(row.recep_fecha), 'date_audi_vto': handleDatetimeToDate(row.audi_vto),
-                    'date_period': handleDatetimeToDate(row.perio), 'record_type': row.tipo_d, 'totcal': row.totcal, 'bruto': row.bruto, 'ivacal': row.ivacal,
-                    'prestac_grava': row.prestac_grava, 'debcal': row.debcal, 'inter_debcal': row.inter_debcal, 'debito': row.debito, 'debtot': row.debtot,
-                    'a_pagar': row.a_pagar, 'debito_iva': row.debito_iva, 'receipt_num': row.compro_nro, 'receipt_date': handleDatetimeToDate(row.fecha), 'exento': row.exento,
-                    'gravado': row.gravado, 'iva_factu': row.iva_factu, 'iva_perce': row.iva_perce, 'iibb': row.iibb, 'record_total': totalVal,
-                    'neto_impues': row.neto_impues, 'resu_liqui': row.resu_liqui, 'cuenta': row.cuenta, 'ambu_total': row.ambu_total,
-                    'inter_total': row.inter_total, 'audit_group': row[configData['audit_group']], 'date_vto_carga': handleDatetimeToDate(row.fecha_vto_carga),
-                    'status': row.estado, 'assigned_user': row.usuario, 'avance': row.avance
+                    'id': row[configData['id_record']], 'id_provider': row[configData['id_provider']], 'id_receipt_type': receiptTypesObj[row[configData['id_receipt_type']]],
+                    'date_liquid': handleDateDMY(row[configData['date_liquid']]), 'date_recep': handleDateDMY(row[configData['date_recep']]),
+                    'date_audi_vto': handleDateDMY(row[configData['date_audi_vto']]), 'date_period': handleDateDMY(row[configData['date_period']]),
+                    'record_type': row[configData['record_type']], 'totcal': row[configData['totcal']], 'bruto': row[configData['bruto']], 'ivacal': row[configData['ivacal']],
+                    'prestac_grava': row[configData['prestac_grava']], 'debcal': row[configData['debcal']], 'inter_debcal': row[configData['inter_debcal']],
+                    'debito': row[configData['debito']], 'debtot': row[configData['debtot']], 'a_pagar': row[configData['a_pagar']], 'debito_iva': row[configData['debito_iva']],
+                    'receipt_num': row[configData['receipt_num']], 'receipt_date': handleDateDMY(row[configData['receipt_date']]), 'exento': row[configData['exento']],
+                    'gravado': row[configData['gravado']], 'iva_factu': row[configData['iva_factu']], 'iva_perce': row[configData['iva_perce']],
+                    'iibb': row[configData['iibb']], 'record_total': totalVal, 'neto_impues': row[configData['neto_impues']], 'resu_liqui': row[configData['resu_liqui']],
+                    'cuenta': row[configData['cuenta']], 'ambu_total': row[configData['ambu_total']], 'inter_total': row[configData['inter_total']], 'audit_group': audit_group,
+                    'date_vto_carga': handleDateDMY(row[configData['date_vto_carga']]), 'status': row[configData['status']], 'assigned_user': row[configData['assigned_user']],
+                    'avance': row[configData['avance']]
                 }
                 # Extract values and concatenate them into a single string
+
                 sorted_keys = sorted(rowRecord.keys())
                 joined_vals = ''.join(
                     str(rowRecord[key]) for key in sorted_keys)
                 hash_object = hashlib.sha256(joined_vals.encode()).hexdigest()
                 rowRecord['hashedVal'] = hash_object
 
-                if row.prestad not in existingProviders:
-                    existingProviders.add(row.prestad)
+                if row[configData['id_provider']] not in existingProviders:
+                    existingProviders.add(row[configData['id_provider']])
                     newProviders.append(
-                        {'id': row.prestad, 'business_name': row.razon, 'business_location': row.loca, 'sancor_zone': row.zona_sancor})
+                        {'id': row[configData['id_provider']], 'business_name': row[configData['business_name']], 'business_location': row[configData['business_location']],
+                         'sancor_zone': row[configData['sancor_zone']]})
 
-                if row.expe not in existing_records:
-                    existing_records.add(row.expe)
+                if row[configData['id_record']] not in existing_records:
+                    existing_records.add(row[configData['id_record']])
                     newRecords.append(rowRecord)
-                    if row[configData['audit_group']] == 61:
+                    if audit_group == 61:
                         newCases.append(
-                            {'id_record': row.expe, 'date_assignment': None}
+                            {'id_record': row[configData['id_record']],
+                                'date_assignment': None}
                         )
                 else:
-                    updateRecordsIds.append(row.expe)
+                    updateRecordsIds.append(row[configData['id_record']])
                     updateRecordsData.append(rowRecord)
 
             start = time.time()
@@ -204,7 +215,22 @@ def post_db(request):
         return JsonResponse({'success': False, 'error': e})
 
 
-def string_to_obj(string_data):
+def string_to_obj(string_data, index_empty):
     array_data = json.loads(string_data)
-    new_dict = {item['identifier']: item['order'] for item in array_data}
+    new_dict = {
+        item['identifier']: index_empty if item['order'] is None else item['order']
+        for item in array_data
+    }
+    print('Dict:', new_dict)
     return new_dict
+
+
+def file_to_df(file):
+    df = pd.read_excel(file)
+    df = df.replace({np.nan: None})
+    df['emptyCol'] = None
+    index_of_empty_col = df.columns.get_loc('emptyCol')
+    return df, index_of_empty_col
+
+def has_non_numeric_chars(text):
+    return bool(re.search(r'[^0-9]', str(text)))
