@@ -1,4 +1,3 @@
-import token
 from django.http import JsonResponse
 from passlib.hash import bcrypt
 from gsalud.models import Users
@@ -53,6 +52,8 @@ def is_auth(request):
             try:
                 # Attempt to validate the token
                 validated_token = RefreshToken(token)
+                user_id = validated_token.payload['user_id']
+                print('acac',user_id)
                 # The token is valid
                 return JsonResponse({'success': True, 'message': 'Token is valid'})
             except InvalidToken:
@@ -66,4 +67,5 @@ def is_auth(request):
             return JsonResponse({'success': False, 'error': 'Token not provided'})
 
     except Exception as e:
+        print(e)
         return JsonResponse({'success': False, 'error': str(e)})

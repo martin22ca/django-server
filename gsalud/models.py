@@ -1,5 +1,6 @@
+from email.policy import default
 from django.db import models
-import hashlib
+
 
 class Configs(models.Model):
     value = models.TextField()
@@ -38,17 +39,17 @@ class Notifications(models.Model):
         db_table = 'notifications'
 
 
+# Many - Many intermediate table
 class UsersNotifications(models.Model):
-    # The composite primary key (id_user, id_notification) found, that is not supported. The first column is selected.
-    id_user = models.OneToOneField(
-        Users, models.DO_NOTHING, db_column='id_user', primary_key=True)
+    id_user = models.ForeignKey(
+        Users, on_delete=models.CASCADE,db_column='id_user')
     id_notification = models.ForeignKey(
-        Notifications, models.DO_NOTHING, db_column='id_notification')
-    viewd = models.BooleanField()
+        Notifications, on_delete=models.CASCADE,db_column='id_notification')
+    viewed = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'users_notifications'
-        unique_together = (('id_user', 'id_notification'),)
+        unique_together = ('id_user', 'id_notification')
 
 
 class Roles(models.Model):
@@ -59,24 +60,26 @@ class Roles(models.Model):
         db_table = 'roles'
 
 
+# Many - Many intermediate table
 class UsersRoles(models.Model):
     id_user = models.OneToOneField(
-        Users, models.DO_NOTHING, db_column='id_user', primary_key=True)
-    id_role = models.ForeignKey(Roles, models.DO_NOTHING, db_column='id_role')
+        Users, on_delete=models.CASCADE,db_column='id_user')
+    id_role = models.ForeignKey(
+        Roles, on_delete=models.CASCADE,db_column='id_role')
 
     class Meta:
         db_table = 'users_roles'
         unique_together = (('id_user', 'id_role'),)
 
 
-class Peculiarities(models.Model):
-    pec_g_salud = models.TextField(blank=True, null=True)
-    pec_prevencion = models.TextField(blank=True, null=True)
+class Particularity(models.Model):
+    part_g_salud = models.TextField(blank=True, null=True)
+    part_prevencion = models.TextField(blank=True, null=True)
     mod_prevencion = models.DateField()
     mod_g_salud = models.DateField()
 
     class Meta:
-        db_table = 'peculiarities'
+        db_table = 'Particularities'
 
 
 class Priorities(models.Model):
@@ -92,9 +95,9 @@ class Priorities(models.Model):
 class Providers(models.Model):
     id = models.BigIntegerField(auto_created=False, primary_key=True)
     id_priority = models.ForeignKey(
-        Priorities, models.DO_NOTHING, db_column='id_priority', default=0)
-    id_pecularity = models.ForeignKey(
-        Peculiarities, models.DO_NOTHING, db_column='id_pecularity', blank=True, null=True)
+        Priorities, models.DO_NOTHING, db_column='id_priority', blank=True, null=True)
+    id_particularity = models.ForeignKey(
+        Particularity, models.DO_NOTHING, db_column='id_particularity', blank=True, null=True)
     coordinator_number = models.IntegerField(blank=True, null=True)
     cuit = models.CharField(max_length=12, blank=True, null=True)
     address = models.CharField(max_length=100, blank=True, null=True)
@@ -127,17 +130,27 @@ class ReceiptTypes(models.Model):
         db_table = 'receipt_types'
 
 
+class RecordTypes(models.Model):
+    record_name = models.CharField(max_length=20)
+    record_desc = models.CharField(max_length=50)
+
+    class Meta:
+        db_table = 'record_types'
+
+
 class Records(models.Model):
     id = models.BigIntegerField(auto_created=False, primary_key=True)
     id_provider = models.ForeignKey(
         Providers, models.DO_NOTHING, db_column='id_provider')
     id_receipt_type = models.ForeignKey(
-        'ReceiptTypes', models.DO_NOTHING, db_column='id_receipt_type', blank=True, null=True)
+        'ReceiptTypes', models.SET_NULL,  db_column='id_receipt_type', blank=True, null=True)
+    id_record_type = models.ForeignKey(
+        'RecordTypes', models.SET_NULL, db_column='id_record_type', blank=True, null=True)
     date_liquid = models.DateField(blank=True, null=True, default=None)
     date_recep = models.DateField(blank=True, null=True)
     date_audi_vto = models.DateField(blank=True, null=True)
     date_period = models.DateField(blank=True, null=True)
-    record_type = models.CharField(max_length=15, blank=True, null=True)
+
     totcal = models.DecimalField(
         max_digits=16, decimal_places=2, blank=True, null=True)
     bruto = models.DecimalField(
@@ -207,6 +220,19 @@ class RecordInfo(models.Model):
 
     class Meta:
         db_table = 'records_info'
+
+
+# Many - Many intermediate table
+class RecordsInfoUsers(models.Model):
+    id_user = models.ForeignKey(
+        Users, on_delete=models.CASCADE, db_column='id_user')
+    id_record_info = models.ForeignKey(
+        'RecordInfo', on_delete=models.CASCADE, db_column='id_record_info')
+    worked_on = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'users_x_records_info'
+        unique_together = ('id_user', 'id_record_info')
 
 
 class Differences(models.Model):

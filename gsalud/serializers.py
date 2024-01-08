@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Users, Configs, Providers, ReceiptTypes, Records, RecordInfo,Priorities,Peculiarities
+from .models import Users, Configs, Providers, ReceiptTypes,RecordTypes, Records, RecordInfo,Priorities,RecordsInfoUsers
 
 
 class DynamicFieldsSerializer(serializers.ModelSerializer):
@@ -41,7 +41,17 @@ class ReceitTypesSerializer(DynamicFieldsSerializer):
         model = ReceiptTypes
         fields = '__all__'
 
+class RecordTypesSerializer(DynamicFieldsSerializer):
+    class Meta:
+        model = RecordTypes
+        fields = '__all__'
+
 class PrioritiesSerializer(DynamicFieldsSerializer):
+    class Meta:
+        model = Priorities
+        fields = '__all__'
+
+class ParticularitiesSerializer(DynamicFieldsSerializer):
     class Meta:
         model = Priorities
         fields = '__all__'
@@ -58,4 +68,10 @@ class RecordInfoSerializer(DynamicFieldsSerializer):
 
     class Meta:
         model = RecordInfo
+        fields = '__all__'
+
+class RecordsUsersSerializer(DynamicFieldsSerializer):
+
+    class Meta:
+        model = RecordsInfoUsers
         fields = '__all__'
