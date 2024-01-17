@@ -11,6 +11,7 @@ class Configs(models.Model):
 
 
 class Users(models.Model):
+    available = models.BooleanField(default=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     user_name = models.CharField(max_length=10)
@@ -42,9 +43,9 @@ class Notifications(models.Model):
 # Many - Many intermediate table
 class UsersNotifications(models.Model):
     id_user = models.ForeignKey(
-        Users, on_delete=models.CASCADE,db_column='id_user')
+        Users, on_delete=models.CASCADE, db_column='id_user')
     id_notification = models.ForeignKey(
-        Notifications, on_delete=models.CASCADE,db_column='id_notification')
+        Notifications, on_delete=models.CASCADE, db_column='id_notification')
     viewed = models.BooleanField(default=False)
 
     class Meta:
@@ -63,9 +64,9 @@ class Roles(models.Model):
 # Many - Many intermediate table
 class UsersRoles(models.Model):
     id_user = models.OneToOneField(
-        Users, on_delete=models.CASCADE,db_column='id_user')
+        Users, on_delete=models.CASCADE, db_column='id_user')
     id_role = models.ForeignKey(
-        Roles, on_delete=models.CASCADE,db_column='id_role')
+        Roles, on_delete=models.CASCADE, db_column='id_role')
 
     class Meta:
         db_table = 'users_roles'
@@ -79,7 +80,7 @@ class Particularity(models.Model):
     mod_g_salud = models.DateField()
 
     class Meta:
-        db_table = 'Particularities'
+        db_table = 'particularities'
 
 
 class Priorities(models.Model):
@@ -113,6 +114,7 @@ class Providers(models.Model):
 class Lots(models.Model):
     id_user = models.ForeignKey(
         'Users', models.DO_NOTHING, db_column='id_user', blank=True, null=True)
+    lot_key = models.CharField(max_length=10)
     status = models.BooleanField()
     date_asignment = models.DateField(blank=True, null=True)
     date_return = models.DateField(blank=True, null=True)

@@ -20,3 +20,10 @@ def handleDateDMY(dateVal):
                 return None  # Return None if parsing fails
     else:
         return None
+
+
+def dateStrToDate(dateVal):
+    if dateVal:
+        return datetime.strptime(dateVal, '%Y-%M-%d').date()
+    else:
+        return None

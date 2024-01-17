@@ -31,7 +31,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'gsalud',
-    'rest_framework'
+    'rest_framework',
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -64,8 +65,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'gsalud.wsgi.application'
-
+ASGI_APPLICATION = 'gsalud.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

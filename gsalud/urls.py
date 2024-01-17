@@ -15,12 +15,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from gsalud.consumers import ChatConsumer
 from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('ws/chat/', ChatConsumer.as_asgi()),
     path('admission/', include('gsalud.paths.admission_urls')),
     path('records/', include('gsalud.paths.records_urls')),
     path('config/', include('gsalud.paths.config_urls')),
