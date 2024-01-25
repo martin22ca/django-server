@@ -103,7 +103,7 @@ sql_generators = {
 }
 
 
-def get_table_data(request, base_query, moddifiers=[]):
+def get_table_data(request, base_query, moddifiers=[], group_by=None):
     try:
         with connection.cursor() as cursor:
             dataString = request.GET.dict()['filters']
@@ -130,11 +130,15 @@ def get_table_data(request, base_query, moddifiers=[]):
                 filter_sql = ' AND '.join(where_filters)
                 base_query += f' WHERE {filter_sql}'
 
+            # GROUP BY
+            if group_by:
+                base_query += f' GROUP BY {group_by}'
+
             if order_by:
                 base_query += f' {order_by}'
-            
+
             # Add LIMIT clause to the SQL query
-            base_query += f' LIMIT 10000'  
+            base_query += f' LIMIT 10000'
 
             cursor.execute(base_query)
             columns = [col[0] for col in cursor.description]

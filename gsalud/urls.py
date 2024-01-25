@@ -24,4 +24,5 @@ urlpatterns = [
     path('config/', include('gsalud.paths.config_urls')),
     path('users/', include('gsalud.paths.users_urls')),
     path('providers/', include('gsalud.paths.providers_urls')),
+    path('lots/', include('gsalud.paths.lots_urls')),
 ]

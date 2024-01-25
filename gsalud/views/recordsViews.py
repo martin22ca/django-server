@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view
 from gsalud.utils.manageDate import dateStrToDate
 from gsalud.models import RecordsInfoUsers, RecordInfo, Users
 from gsalud.services.lotsService import getLotfromKey
+from gsalud.services.recordInfoService import removeRecordFromUser
 
 
 def getRecords(request):
@@ -20,12 +21,20 @@ def getRecords(request):
 
 def getRecordsInfos(request):
     try:
-        base_query = """select ri.id_record,ri.assigned,r.id_provider, r.record_type,ri.id_lot,l.id_user,p.coordinator_number,r.record_total,ri.date_assignment ,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,ri.observation 
-                        from records_info ri  
-                        inner join records r ON ri.id_record  = r.id
-                        inner join providers p  on r.id_provider = p.id 
-                        left join lots l on ri.id_lot = l.id """
-        return get_table_data(request, base_query)
+        id_lot = request.GET.dict()['id_lot']
+        base_query = """select ri.id_record,ri.assigned,r.id_provider,business_name, rt.record_name ,ri.id_lot, 
+                        l.id_user, p.coordinator_number,r.record_total,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,
+                        ri.observation, l.lot_key 
+                        from records_info ri 
+                        left join records r ON ri.id_record  = r.id
+                        left join record_types rt on rt.id = r.id_record_type
+                        left join providers p  on r.id_provider = p.id 
+                        left join lots l on ri.id_lot = l.id"""
+        if id_lot:
+            modifier = f'ri.id_lot = {id_lot}'
+            return get_table_data(request, base_query, [modifier])
+        else:
+            return get_table_data(request, base_query)
 
     except Exception as e:
         print(e)
@@ -135,9 +144,6 @@ def saveRecordtoUser(request):
                 uxri_instance.worked_on = False
                 uxri_instance.save()
 
-                # LOT
-                lot_instance = getLotfromKey(record_info['lot_key'])
-
                 # record_info_instance save
                 record_info_instance = RecordInfo.objects.filter(
                     id=uxri_instance.id_record_info.id).first()
@@ -147,12 +153,32 @@ def saveRecordtoUser(request):
                     record_info['date_entry_physical'])
                 record_info_instance.seal_number = record_info['seal_number']
                 record_info_instance.observation = record_info['observation']
-                record_info_instance.id_lot = lot_instance
+
+                # LOT
+                if record_info['lot_key'] != None:
+                    lot_instance = getLotfromKey(record_info['lot_key'])
+                    record_info_instance.id_lot = lot_instance
+
                 record_info_instance.save()
 
                 print('data:', record_info)
 
         return JsonResponse({'success': True, 'message': 'Guardados Cambios Expediente'})
+
+    except Exception as e:
+        print(e)
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@api_view(['PUT'])
+def removeRecordUser(request):
+    try:
+        requestDict = request.data
+        id_uxri = requestDict['id_uxri']
+        if removeRecordFromUser(id_uxri):
+            return JsonResponse({'success': True, 'message': 'Guardados Cambios Expediente'})
+        else:
+            return JsonResponse({'success': False, 'error': 'No se pudo desasignar el expediente'})
 
     except Exception as e:
         print(e)

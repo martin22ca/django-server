@@ -24,6 +24,9 @@ def handleDateDMY(dateVal):
 
 def dateStrToDate(dateVal):
     if dateVal:
-        return datetime.strptime(dateVal, '%Y-%M-%d').date()
+        if dateVal != '':
+            return datetime.strptime(dateVal, '%Y-%M-%d').date()
+        else:
+            return None
     else:
         return None
