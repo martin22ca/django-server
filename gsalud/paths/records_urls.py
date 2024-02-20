@@ -1,8 +1,9 @@
 from django.urls import path
-from gsalud.views.recordsViews import getRecords,getRecordsInfos,getUserRecords,addRecordtoUser,updateRecordtoUser,saveRecordtoUser,removeRecordUser
+from gsalud.views.recordsViews import getRecordsDB, getRecordsMain, getRecordsInfos, getUserRecords, addRecordtoUser, updateRecordtoUser, saveRecordtoUser, removeRecordUser
 
 urlpatterns = [
-    path('', getRecords),
+    path('', getRecordsDB),
+    path('main', getRecordsMain),
     path('info', getRecordsInfos),
     path('userInfo', getUserRecords),
     path('addrecord', addRecordtoUser),

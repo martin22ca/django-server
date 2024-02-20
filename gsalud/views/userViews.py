@@ -40,7 +40,6 @@ def registerUser(request):
 def updateUser(request):
     try:
         data = request.data
-        print(data)
         user_id = data.get('user_id')
 
         if user_id is None:
@@ -48,8 +47,7 @@ def updateUser(request):
 
         data = {key: value for key, value in data.items() if value is not None}
         excluded_keys = ['user_id']
-        data = {key: value for key,
-                value in data.items() if key not in excluded_keys}
+        data = {key: value for key,value in data.items() if key not in excluded_keys}
 
         user_instance = Users.objects.get(pk=user_id)
         serializer = UsersSerializer(

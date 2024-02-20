@@ -9,7 +9,8 @@ from gsalud.services.lotsService import getLotfromKey
 from gsalud.services.recordInfoService import removeRecordFromUser
 
 
-def getRecords(request):
+@api_view(['GET'])
+def getRecordsDB(request):
     try:
         base_query = 'SELECT * FROM records'
         return get_table_data(request, base_query)
@@ -19,6 +20,22 @@ def getRecords(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+@api_view(['GET'])
+def getRecordsMain(request):
+    try:
+        base_query = '''
+                        SELECT r.*, ri.id AS ir_record, l.id AS id_lot, ri.*, l.* FROM records r
+                        LEFT JOIN records_info ri ON r.id = ri.id
+                        LEFT JOIN lots l ON ri.id_lot = l.id
+                    '''
+        return get_table_data(request, base_query)
+
+    except Exception as e:
+        print(e)
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@api_view(['GET'])
 def getRecordsInfos(request):
     try:
         id_lot = request.GET.dict()['id_lot']
@@ -41,6 +58,7 @@ def getRecordsInfos(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+@api_view(['GET'])
 def getUserRecords(request):
     try:
         token = request.GET.dict()['token']
