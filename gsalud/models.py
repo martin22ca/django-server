@@ -14,7 +14,7 @@ class Users(models.Model):
     available = models.BooleanField(default=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    user_name = models.CharField(max_length=10)
+    user_name = models.CharField(max_length=20)
     user_pass = models.TextField()
     email_corp = models.CharField(max_length=100, blank=True, null=True)
     email_personal = models.CharField(max_length=100, blank=True, null=True)
