@@ -22,8 +22,10 @@ def getUsers(request):
 def registerUser(request):
     try:
         data = request.data
+        print('first:',data)
         hashed_password = bcrypt.hash(data['user_pass'])
         data['user_pass'] = hashed_password
+        print(data)
         serializer = UsersSerializer(data=data)
 
         if serializer.is_valid():
@@ -52,6 +54,10 @@ def updateUser(request):
         user_instance = Users.objects.get(pk=user_id)
         serializer = UsersSerializer(
             instance=user_instance, data=data, partial=True)
+        
+        if data['user_pass']:
+            hashed_password = bcrypt.hash(data['user_pass'])
+            data['user_pass'] = hashed_password
 
         if serializer.is_valid():
             serializer.save()
