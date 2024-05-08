@@ -18,7 +18,6 @@ from gsalud.services.recordInfoService import insertRecordsCases, updateRecordsC
 from gsalud.services.providersService import insertProviders, updateProviders, handlePriority, registerParticularity, updateParticularity
 
 
-
 @api_view(['POST'])
 def post_assignment(request):
     try:
@@ -174,6 +173,7 @@ def post_db(request):
             updateRecordsData = []
             updateRecordsIds = []
             for row in df.itertuples(index=False):
+                audit_group = None
                 if row[configData['audit_group']]:
                     audit_group = int(row[configData['audit_group']])
 
