@@ -53,6 +53,8 @@ def post_assignment(request):
 
                 id_record = int(row[configData['id_record']])
                 id_provider = int(row[configData['id_provider']])
+                audit_group = None
+                
                 if row[configData['audit_group']]:
                     audit_group = int(row[configData['audit_group']])
 

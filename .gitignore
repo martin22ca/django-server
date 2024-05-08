@@ -11,12 +11,12 @@ test.py
 
 gsalud/migrations/
 
+gsalud/consumers/__pycache__/
+
 gsalud/services/__pycache__/
 
 gsalud/utils/__pycache__/
 
 gsalud/views/__pycache__/
-
-
 
 gsalud/paths/__pycache__/
