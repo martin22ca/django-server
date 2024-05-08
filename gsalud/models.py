@@ -10,7 +10,17 @@ class Configs(models.Model):
         db_table = 'configs'
 
 
+class Roles(models.Model):
+    title = models.CharField()
+    description = models.CharField()
+    configs = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'roles'
+
 class Users(models.Model):
+    id_role = models.ForeignKey(
+        Roles, on_delete=models.SET_NULL, db_column='id_role',null=True, default=None)
     available = models.BooleanField(default=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -51,27 +61,6 @@ class UsersNotifications(models.Model):
     class Meta:
         db_table = 'users_notifications'
         unique_together = ('id_user', 'id_notification')
-
-
-class Roles(models.Model):
-    title = models.CharField()
-    description = models.CharField()
-
-    class Meta:
-        db_table = 'roles'
-
-
-# Many - Many intermediate table
-class UsersRoles(models.Model):
-    id_user = models.OneToOneField(
-        Users, on_delete=models.CASCADE, db_column='id_user')
-    id_role = models.ForeignKey(
-        Roles, on_delete=models.CASCADE, db_column='id_role')
-
-    class Meta:
-        db_table = 'users_roles'
-        unique_together = (('id_user', 'id_role'),)
-
 
 class Particularity(models.Model):
     part_g_salud = models.TextField(blank=True, null=True)

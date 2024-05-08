@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Users, Configs, Providers, ReceiptTypes, RecordTypes, Records, RecordInfo, Priorities, RecordsInfoUsers, Particularity, Lots
+from gsalud.models import Users, Configs, Providers, ReceiptTypes, RecordTypes, Records, RecordInfo, Priorities, RecordsInfoUsers, Particularity, Lots, Roles
 
 
 class DynamicFieldsSerializer(serializers.ModelSerializer):
@@ -85,4 +85,11 @@ class LotsSerializer(DynamicFieldsSerializer):
 
     class Meta:
         model = Lots
+        fields = '__all__'
+
+
+class RolesSerializer(DynamicFieldsSerializer):
+
+    class Meta:
+        model = Roles
         fields = '__all__'

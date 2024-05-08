@@ -1,6 +1,6 @@
 from django.urls import path
-from gsalud.views.rolesViews import getUsersWithRoles
+from gsalud.views.rolesViews import getRoles
 
 urlpatterns = [
-    path('useroles', getUsersWithRoles),
+    path('', getRoles),
 ]

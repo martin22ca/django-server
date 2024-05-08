@@ -18,6 +18,7 @@ from gsalud.services.recordInfoService import insertRecordsCases, updateRecordsC
 from gsalud.services.providersService import insertProviders, updateProviders, handlePriority, registerParticularity, updateParticularity
 
 
+
 @api_view(['POST'])
 def post_assignment(request):
     try:
