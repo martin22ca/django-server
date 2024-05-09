@@ -21,12 +21,20 @@ def getRecordsDB(request):
 
 
 @api_view(['GET'])
-def getRecordsMain(request):
+def getRecordsAssigned(request):
     try:
-        base_query = '''
-                        SELECT r.*, ri.id AS ir_record, l.id AS id_lot, ri.*, l.* FROM records r
-                        LEFT JOIN records_info ri ON r.id = ri.id
-                        LEFT JOIN lots l ON ri.id_lot = l.id
+        base_query = ''' 
+        SELECT r.id AS id_record,r.id_provider,r.id_receipt_type,r.id_record_type,r.date_liquid,r.date_recep,
+        r.date_audi_vto,r.date_period,r.totcal,r.bruto,r.ivacal,r.prestac_grava,r.debcal,r.inter_debcal, 
+        r.debito,r.debtot,r.a_pagar,r.debito_iva,r.receipt_num,r.receipt_date,r.exento,r.gravado,
+        r.iva_factu,r.iva_perce,r.iibb,r.record_total,r.neto_impues,r.resu_liqui,r.cuenta,
+        r.ambu_total,r.inter_total,r.audit_group,r.date_vto_carga,r.status,r.assigned_user, r.avance,
+        ri.id AS id_record_info, ri.date_assignment as date_assignment_case , ri.date_entry_digital,
+        ri.date_entry_physical,ri.seal_number,ri.observation,ri.date_close,ri.assigned,
+        l.id AS id_lot,l.lot_key,l.status AS lot_status,l.date_asignment as date_assignment_lot,l.date_return,l.date_departure
+        FROM  records r 
+        INNER JOIN records_info ri ON r.id = ri.id_record
+        LEFT JOIN lots l ON ri.id_lot = l.id
                     '''
         return get_table_data(request, base_query)
 
