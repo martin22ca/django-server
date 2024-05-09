@@ -21,6 +21,7 @@ from gsalud.services.providersService import insertProviders, updateProviders, h
 @api_view(['POST'])
 def post_assignment(request):
     try:
+        print('Start Assignment')
         if request.method == 'POST' and 'file' in request.FILES:
             uploaded_file = request.FILES['file']
             df, id_empty = file_to_df(uploaded_file)
@@ -54,7 +55,7 @@ def post_assignment(request):
                 id_record = int(row[configData['id_record']])
                 id_provider = int(row[configData['id_provider']])
                 audit_group = None
-                
+
                 if row[configData['audit_group']]:
                     audit_group = int(row[configData['audit_group']])
 
@@ -152,6 +153,7 @@ def post_assignment(request):
 @api_view(['POST'])
 def post_db(request):
     try:
+        print('Start Posta DB')
         if request.method == 'POST' and 'file' in request.FILES:
             uploaded_file = request.FILES['file']
             df, id_empty = file_to_df(uploaded_file)

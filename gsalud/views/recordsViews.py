@@ -4,9 +4,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from gsalud.services.filterTable import get_table_data
 from rest_framework.decorators import api_view
 from gsalud.utils.manageDate import dateStrToDate
-from gsalud.models import RecordsInfoUsers, RecordInfo, Users
+from gsalud.models import RecordsInfoUsers, RecordInfo, Users, Records
 from gsalud.services.lotsService import getLotfromKey
-from gsalud.services.recordInfoService import removeRecordFromUser
+from gsalud.services.recordInfoService import removeRecordFromUser, createRecordInfo
 
 
 @api_view(['GET'])
@@ -84,6 +84,7 @@ def getUserRecords(request):
 @api_view(['POST'])
 def addRecordtoUser(request):
     try:
+        warning = ''
         requestDict = request.data
         token = requestDict['token']
         validated_token = RefreshToken(token)
@@ -93,7 +94,11 @@ def addRecordtoUser(request):
         # Check if the record exists
         record_info_instance = RecordInfo.objects.filter(id_record=id_record)
         if not record_info_instance.exists():
-            return JsonResponse({'success': False, 'error': 'El expediente no existe o no esta asignado'})
+            res = createRecordInfo(requestDict['id_record'])
+            if res:
+                warning = '/Warning: El expediente no estaba asignado'
+            else:
+                return JsonResponse({'success': False, 'error': 'El expediente no existe o no esta asignado'})
 
         user_instance = Users.objects.filter(id=id_user).first()
         record_info_id = record_info_instance.first().id
@@ -101,9 +106,9 @@ def addRecordtoUser(request):
         record_user_exists = RecordsInfoUsers.objects.filter(
             id_record_info=record_info_id, id_user=id_user).exists()
         if not record_user_exists:
-            RecordsInfoUsers.objects.create(
-                id_record_info=record_info_instance.first(), id_user=user_instance)
-            return JsonResponse({'success': True, 'message': 'Nuevo Expediente'})
+            RecordsInfoUsers.objects.create(id_record_info=record_info_instance.first(
+            ), id_user=user_instance, worked_on=False)
+            return JsonResponse({'success': True, 'message': 'Nuevo Expediente ' + warning})
         else:
             return JsonResponse({'success': False, 'error': 'Expediente ya en la Tabla'})
 
@@ -194,7 +199,7 @@ def removeRecordUser(request):
         requestDict = request.data
         id_uxri = requestDict['id_uxri']
         if removeRecordFromUser(id_uxri):
-            return JsonResponse({'success': True, 'message': 'Guardados Cambios Expediente'})
+            return JsonResponse({'success': True, 'message': 'Expediente desasignado'})
         else:
             return JsonResponse({'success': False, 'error': 'No se pudo desasignar el expediente'})
 
