@@ -55,10 +55,11 @@ def updateLot(request):
 
         # Retrieve the Lot instance to update
         lot_instance = Lots.objects.get(id=id_lot)
-        print(data)
         data = {key: value for key, value in data.items() if value is not None}
         data.pop('id_lot')
-        print(data)
+
+        if "id_user" not in data:
+            data['id_user'] = None
 
         serializer = LotsSerializer(lot_instance, data=data, partial=True)
 

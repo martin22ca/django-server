@@ -37,3 +37,4 @@ typing_extensions==4.8.0
 tzdata==2023.3
 xlrd==2.0.1
 zope.interface==6.1
+python-dotenv
