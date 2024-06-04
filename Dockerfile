@@ -11,8 +11,5 @@ COPY . /app/
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create tables on the DB
-RUN python manage.py makemigrations gsalud
-
 # Expose the port the Django app runs on
 EXPOSE 8000
