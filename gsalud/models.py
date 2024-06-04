@@ -5,6 +5,7 @@ from django.db import models
 class Configs(models.Model):
     value = models.TextField()
     description = models.TextField(blank=True, null=True)
+    mod_date = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         db_table = 'configs'
@@ -18,9 +19,10 @@ class Roles(models.Model):
     class Meta:
         db_table = 'roles'
 
+
 class Users(models.Model):
     id_role = models.ForeignKey(
-        Roles, on_delete=models.SET_NULL, db_column='id_role',null=True, default=None)
+        Roles, on_delete=models.SET_NULL, db_column='id_role', null=True, default=None)
     available = models.BooleanField(default=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -62,11 +64,12 @@ class UsersNotifications(models.Model):
         db_table = 'users_notifications'
         unique_together = ('id_user', 'id_notification')
 
+
 class Particularity(models.Model):
     part_g_salud = models.TextField(blank=True, null=True)
     part_prevencion = models.TextField(blank=True, null=True)
-    mod_prevencion = models.DateField()
-    mod_g_salud = models.DateField()
+    mod_prevencion = models.DateField(blank=True, null=True)
+    mod_g_salud = models.DateField(blank=True, null=True)
 
     class Meta:
         db_table = 'particularities'
@@ -83,7 +86,7 @@ class Priorities(models.Model):
 
 
 class Providers(models.Model):
-    id = models.BigIntegerField(auto_created=False, primary_key=True)
+    id_provider = models.BigIntegerField(auto_created=False, primary_key=True)
     id_priority = models.ForeignKey(
         Priorities, models.DO_NOTHING, db_column='id_priority', blank=True, null=True)
     id_particularity = models.ForeignKey(
@@ -130,7 +133,7 @@ class RecordTypes(models.Model):
 
 
 class Records(models.Model):
-    id = models.BigIntegerField(auto_created=False, primary_key=True)
+    id_record = models.BigIntegerField(auto_created=False, primary_key=True)
     id_provider = models.ForeignKey(
         Providers, models.DO_NOTHING, db_column='id_provider')
     id_receipt_type = models.ForeignKey(
@@ -190,7 +193,7 @@ class Records(models.Model):
     assigned_user = models.CharField(max_length=20, blank=True, null=True)
     avance = models.DecimalField(
         max_digits=16, decimal_places=2, blank=True, null=True)
-    hashedVal = models.CharField(max_length=64, blank=True, null=True)
+    hashed_val = models.CharField(max_length=64, blank=True, null=True)
 
     class Meta:
         db_table = 'records'
@@ -224,24 +227,3 @@ class RecordsInfoUsers(models.Model):
     class Meta:
         db_table = 'users_x_records_info'
         unique_together = ('id_user', 'id_record_info')
-
-
-class Differences(models.Model):
-    id_discrep = models.ForeignKey(
-        'Discrepancies', models.DO_NOTHING, db_column='id_discrep')
-    value_1 = models.CharField(max_length=100)
-    value_2 = models.CharField(max_length=100)
-    description = models.TextField()
-
-    class Meta:
-        db_table = 'differences'
-
-
-class Discrepancies(models.Model):
-    id_record = models.ForeignKey(
-        'Records', models.DO_NOTHING, db_column='id_record')
-    date_created = models.DateField()
-    status = models.BooleanField()
-
-    class Meta:
-        db_table = 'discrepancies'

@@ -1,9 +1,11 @@
+from typing import Dict
 from django.http import JsonResponse
 from passlib.hash import bcrypt
 from gsalud.models import Users
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from rest_framework.decorators import api_view
+from gsalud.services.authService import is_auth
 
 
 @api_view(['POST'])
@@ -40,30 +42,26 @@ def login(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@api_view(['GET'])
-def is_auth(request):
-    try:
-        # Get the token from the query parameters
-        tokenObj = request.GET.dict()
-        token = tokenObj['token']
+def is_authenticated(request) -> JsonResponse:
+    """
+    Check if a user is authenticated based on the token provided in the request.
 
-        # Check if the token is provided
-        if token:
-            try:
-                # Attempt to validate the token
-                validated_token = RefreshToken(token)
-                user_id = validated_token.payload['user_id']
-                # The token is valid
-                return JsonResponse({'success': True, 'message': 'Token is valid'})
-            except InvalidToken:
-                # Token is invalid
-                return JsonResponse({'success': False, 'error': 'Token No valido'})
-            except TokenError as e:
-                # Token is expired or invalid
-                return JsonResponse({'success': False, 'error': str(e)})
+    Args:
+    - request: A Django HttpRequest object containing GET parameters 'token' and 'path'.
+
+    Returns:
+    - A JsonResponse indicating the authentication status and message.
+    """
+    try:
+        token = request.GET.get('token')
+        path = request.GET.get('path')
+
+        valid, message = is_auth({'token': token, 'path': path})
+
+        if valid:
+            return JsonResponse({'success': True, 'message': message})
         else:
-            # Token is not provided
-            return JsonResponse({'success': False, 'error': 'Token not provided'})
+            return JsonResponse({'success': False, 'error': message})
 
     except Exception as e:
         print(e)

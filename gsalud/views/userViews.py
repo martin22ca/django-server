@@ -6,6 +6,7 @@ from gsalud.services.filterTable import get_table_data
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from gsalud.services.authService import is_auth
 
 
 def getUsers(request):
@@ -33,10 +34,8 @@ def getUsersByRole(request):
 def registerUser(request):
     try:
         data = request.data
-        print('first:', data)
         hashed_password = bcrypt.hash(data['user_pass'])
         data['user_pass'] = hashed_password
-        print(data)
         serializer = UsersSerializer(data=data)
 
         if serializer.is_valid():

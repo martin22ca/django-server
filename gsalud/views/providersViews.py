@@ -1,21 +1,37 @@
 from django.http import JsonResponse
 from gsalud.services.filterTable import get_table_data
 from rest_framework.decorators import api_view
-from gsalud.serializers import ProvidersSerializer
+from gsalud.serializers import ProvidersSerializer, PrioritiesSerializer
 from rest_framework.response import Response
 from rest_framework import status
+from gsalud.models import Priorities, Particularity
 
 
 @api_view(['GET'])
-def getProviders(request):
+def get_providers(request):
     try:
-        base_query = '''select p.*,p2.status,p3.part_g_salud ,p3.part_prevencion ,p3.mod_prevencion,p3.mod_g_salud from providers p 
+        base_query = '''select p.*, p2.status,p3.part_g_salud ,p3.part_prevencion ,p3.mod_prevencion,p3.mod_g_salud from providers p 
                     left join priorities p2 on p.id_priority = p2.id 
                     left join particularities p3 on p.id_particularity = p3.id '''
         return get_table_data(request, base_query)
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@api_view(['GET'])
+def get_priorities(request):
+    try:
+        # Fetch all priorities from the database
+        priorities = Priorities.objects.all()
+        # Serialize the queryset
+        serializer = PrioritiesSerializer(priorities, many=True)
+        # Return the serialized data
+        return Response({'success': True, 'data': serializer.data})
+
+    except Exception as e:
+        # Return error response if an exception occurs
+        return Response({'success': False, 'error': str(e)})
 
 
 @api_view(['POST'])

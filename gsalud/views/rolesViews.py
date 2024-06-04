@@ -1,13 +1,14 @@
 from typing import Any
 
-from django.db import transaction
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from django.db import connection
-from gsalud.models import Roles
+from gsalud.models import Roles,Users
 from gsalud.serializers import RolesSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 
 @api_view(['GET'])
@@ -30,6 +31,25 @@ def getRoles(request: Any) -> JsonResponse:
             return JsonResponse({'error': 'Method not allowed'}, status=405)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+    
+@api_view(['GET'])
+def get_role_user(request: Any) -> JsonResponse:
+    try:
+        if request.method == 'GET':
+            token = request.GET.get('token')
+            validated_token = RefreshToken(token)
+            user_id = validated_token.payload['user_id']
+
+            user_instance = Users.objects.get(pk=user_id)
+            role_instance = user_instance.id_role
+            
+            serializer = RolesSerializer(role_instance)
+            return JsonResponse({'success': True, 'data': serializer.data}, safe=False)
+        else:
+            return JsonResponse({'error': 'Method not allowed'}, status=405)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
 
 
 @api_view(['PUT'])

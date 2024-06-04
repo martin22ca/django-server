@@ -1,6 +1,7 @@
 from django.urls import path
-from gsalud.views.providersViews import getProviders
+from gsalud.views.providersViews import get_providers,get_priorities
 
 urlpatterns = [
-    path('', getProviders)
+    path('', get_providers),
+    path('priorities', get_priorities)
 ]

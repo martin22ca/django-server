@@ -3,13 +3,15 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from gsalud.models import Configs
 from gsalud.serializers import ConfigsSerializer
-from gsalud.services.configService import updateConfig
+from gsalud.services.configService import handle_config
 from gsalud.services.filterTable import filters
 
 
 @api_view(['GET'])
 def config_list(request):
-    objs = Configs.objects.filter(id__in=[1, 2])
+    data_string = request.GET.dict()['idList']
+    config_list = json.loads(data_string)
+    objs = Configs.objects.filter(id__in=config_list)
     serializer = ConfigsSerializer(objs, many=True)
     return JsonResponse(serializer.data, safe=False)
 
@@ -31,7 +33,7 @@ def set_config_cols(request):
     try:
         config = json.dumps(request.data['data'])
         id = request.data['id']
-        res = updateConfig(id, config)
+        res = handle_config(id, config)
         return JsonResponse({'success': res})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
