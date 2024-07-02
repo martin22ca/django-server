@@ -2,23 +2,29 @@ from django.db import transaction
 from django.http import JsonResponse
 from rest_framework_simplejwt.tokens import RefreshToken
 from gsalud.services.filterTable import get_table_data
+from gsalud.services.ORM_filters import apply_filters
 from rest_framework.decorators import api_view
-from gsalud.utils.manageDate import dateStrToDate
-from gsalud.models import RecordsInfoUsers, RecordInfo, Users, Records
-from gsalud.services.lotsService import getLotfromKey
-from gsalud.services.recordInfoService import removeRecordFromUser, createRecordInfo
-from gsalud.serializers import RecordInfoSerializer
+from gsalud.models import RecordsInfoUsers, RecordInfo, User, Record
+from gsalud.services.lots_service import get_lot_from_key
+from gsalud.services.record_info_service import removeRecordFromUser, createRecordInfo
+from django.db.models import Prefetch, F
 
 
 @api_view(['GET'])
-def getRecordsDB(request):
+def get_records_db(request):
     try:
-        base_query = '''
-        SELECT r.*,rt.receipt_short ,rt2.record_name
-        FROM records r left join receipt_types rt ON r.id_receipt_type =rt.id
-        left join record_types rt2 on r.id_record_type = rt2.id '''
-
-        return get_table_data(request, base_query)
+        base_queryset = Record.objects.select_related('id_receipt_type', 'id_record_type').annotate(
+            receipt_short=F('id_receipt_type__receipt_short'),
+            record_name=F('id_record_type__record_name')
+        ).values(
+            'id_record', 'id_provider', 'id_receipt_type', 'id_record_type', 'date_liquid', 'date_recep', 'date_audi_vto', 'date_period',
+            'totcal', 'bruto', 'ivacal', 'prestac_grava', 'debcal', 'inter_debcal', 'debito', 'debtot', 'a_pagar',
+            'debito_iva', 'receipt_num', 'receipt_date', 'exento', 'gravado', 'iva_factu', 'iva_perce', 'iibb',
+            'record_total', 'neto_impues', 'resu_liqui', 'cuenta', 'ambu_total', 'inter_total', 'audit_group',
+            'date_vto_carga', 'status', 'assigned_user', 'avance',
+            'receipt_short', 'record_name'
+        )
+        return apply_filters(request, base_queryset)
 
     except Exception as e:
         print(e)
@@ -26,37 +32,86 @@ def getRecordsDB(request):
 
 
 @api_view(['GET'])
-def getRecordsAssigned(request):
+def get_records_assigned(request):
     try:
-        base_query = '''
-        SELECT r.id_record, r.id_provider, r.id_receipt_type, r.id_record_type, r.date_liquid, r.date_recep,
-        r.date_audi_vto, r.date_period, r.totcal, r.bruto, r.ivacal, r.prestac_grava, r.debcal, r.inter_debcal,
-        r.debito, r.debtot, r.a_pagar, r.debito_iva, r.receipt_num, r.receipt_date, r.exento, r.gravado,
-        r.iva_factu, r.iva_perce, r.iibb, r.record_total, r.neto_impues, r.resu_liqui, r.cuenta,
-        r.ambu_total, r.inter_total, r.audit_group, r.date_vto_carga, r.status, r.assigned_user, r.avance,
-        ri.id AS id_record_info, ri.date_assignment as date_assignment_case, ri.date_entry_digital,
-        ri.date_entry_physical, ri.seal_number, ri.observation, ri.date_close, ri.assigned,
-        l.id AS id_lot, l.lot_key, l.status AS lot_status, l.date_asignment as date_assignment_lot, l.date_return, l.date_departure,
-        rt.receipt_short ,rt2.record_name
-        FROM  records r
-        INNER JOIN records_info ri ON r.id_record = ri.id_record
-        LEFT JOIN lots l ON ri.id_lot = l.id
-        LEFT JOIN receipt_types rt ON r.id_receipt_type =rt.id
-        LEFT JOIN record_types rt2 on r.id_record_type = rt2.id
-                    '''
-        return get_table_data(request, base_query)
-
+        base_queryset = Record.objects.select_related('id_receipt_type', 'id_record_type').prefetch_related(
+            Prefetch('recordinfo',
+                     queryset=RecordInfo.objects.select_related('id_lot'))
+        ).annotate(
+            id_record_info=F('recordinfo__id'),
+            date_assignment_case=F('recordinfo__date_assignment'),
+            date_entry_digital=F('recordinfo__date_entry_digital'),
+            date_entry_physical=F('recordinfo__date_entry_physical'),
+            seal_number=F('recordinfo__seal_number'),
+            observation=F('recordinfo__observation'),
+            date_close=F('recordinfo__date_close'),
+            assigned=F('recordinfo__assigned'),
+            id_lot=F('recordinfo__id_lot__id'),
+            lot_key=F('recordinfo__id_lot__lot_key'),
+            lot_status=F('recordinfo__id_lot__status'),
+            date_assignment_lot=F('recordinfo__id_lot__date_asignment'),
+            date_return=F('recordinfo__id_lot__date_return'),
+            date_departure=F('recordinfo__id_lot__date_departure'),
+            receipt_short=F('id_receipt_type__receipt_short'),
+            record_name=F('id_record_type__record_name')
+        ).values(
+            'id_record', 'id_provider', 'id_receipt_type', 'id_record_type', 'date_liquid', 'date_recep', 'date_audi_vto', 'date_period',
+            'totcal', 'bruto', 'ivacal', 'prestac_grava', 'debcal', 'inter_debcal', 'debito', 'debtot', 'a_pagar', 'debito_iva',
+            'receipt_num', 'receipt_date', 'exento', 'gravado', 'iva_factu', 'iva_perce', 'iibb', 'record_total', 'neto_impues',
+            'resu_liqui', 'cuenta', 'ambu_total', 'inter_total', 'audit_group', 'date_vto_carga', 'status', 'assigned_user', 'avance',
+            'id_record_info', 'date_assignment_case', 'date_entry_digital', 'date_entry_physical', 'seal_number', 'observation',
+            'date_close', 'assigned', 'id_lot', 'lot_key', 'lot_status', 'date_assignment_lot', 'date_return', 'date_departure',
+            'receipt_short', 'record_name'
+        )
+        return apply_filters(request, base_queryset)
     except Exception as e:
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
 
 
 @api_view(['GET'])
-def getRecordsInfos(request):
+def get_records_audit(request):
+    try:
+        token = request.GET.dict()['token']
+        validated_token = RefreshToken(token)
+        id_user = int(validated_token.payload['user_id'])
+        base_queryset = Record.objects.select_related(
+            'id_provider__id_particularity',
+            'id_provider__id_priority',
+            'recordinfo__id_lot'
+        ).annotate(
+            part_g_salud=F('id_provider__id_particularity__part_g_salud'),
+            part_prevencion=F(
+                'id_provider__id_particularity__part_prevencion'),
+            priority_status=F('id_provider__id_priority__status'),
+            id_provider_key=F('id_provider__id_provider'),
+            lot_key=F('recordinfo__id_lot__lot_key'),
+            business_name=F('id_provider__business_name'),
+            business_location=F('id_provider__business_location'),
+            id_coordinator=F('id_provider__id_coordinator'),
+            date_asignment=F('recordinfo__id_lot__date_asignment'),
+            observation=F('recordinfo__observation'),
+            id_user=F('recordinfo__id_lot__id_user')
+        ).filter(
+            recordinfo__id_lot__id_user=16
+        ).values(
+            'id_record', 'part_g_salud', 'part_prevencion','priority_status', 'id_provider_key', 'lot_key',
+            'business_name', 'business_location', 'id_coordinator', 'record_total',
+            'date_asignment', 'observation', 'id_user'
+        )
+
+        return apply_filters(request, base_queryset)
+    except Exception as e:
+        print(e)
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@api_view(['GET'])
+def get_records_info(request):
     try:
         id_lot = request.GET.dict()['id_lot']
         base_query = """select ri.id_record,ri.assigned,r.id_provider,business_name,ri.id_lot, 
-                        l.id_user, p.coordinator_number,r.record_total,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,
+                        l.id_user, p.id_coordinator,r.record_total,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,
                         ri.observation, l.lot_key, rt2.receipt_short ,rt.record_name
                         from records_info ri 
                         left join records r ON ri.id_record  = r.id_record
@@ -77,21 +132,20 @@ def getRecordsInfos(request):
 
 
 @api_view(['GET'])
-def getUserRecords(request):
+def get_user_records(request):
     try:
         token = request.GET.dict()['token']
         validated_token = RefreshToken(token)
         id_user = int(validated_token.payload['user_id'])
         base_query = """select ri.id_record, uxri.id as uxri_id,uxri.worked_on,ri.assigned,r.id_provider,business_name, rt.record_name ,ri.id_lot, 
-                        l.id_user, p.coordinator_number,r.record_total,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,
-                        ri.observation, l.lot_key, p.id_priority, p.id_particularity, p3.status
+                        l.id_user,p.priority, p.id_coordinator,r.record_total,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,
+                        ri.observation, l.lot_key, p.id_particularity
                         from users_x_records_info uxri 
                         inner join records_info ri  on ri.id  = uxri.id_record_info
                         inner join records r ON ri.id_record  = r.id_record
                         left join record_types rt on rt.id = r.id_record_type
                         inner join providers p  on r.id_provider = p.id_provider 
                         left join particularities p2 on p2.id = p.id_particularity
-                        left join priorities p3 on p3.id = p.id_priority
                         left join lots l on ri.id_lot = l.id """
         modifier = f'uxri.id_user = {id_user}'
         return get_table_data(request, base_query, [modifier])
@@ -120,7 +174,7 @@ def addRecordtoUser(request):
             else:
                 return JsonResponse({'success': False, 'error': 'El expediente no existe o no esta asignado'})
 
-        user_instance = Users.objects.filter(id=id_user).first()
+        user_instance = User.objects.filter(id=id_user).first()
         record_info_id = record_info_instance.first().id
 
         record_user_exists = RecordsInfoUsers.objects.filter(
@@ -207,7 +261,7 @@ def saveRecordtoUser(request):
                                 field, record_info[field])
 
                 if 'lot_key' in record_info and record_info['lot_key'] is not None:
-                    lot_instance = getLotfromKey(record_info['lot_key'])
+                    lot_instance = get_lot_from_key(record_info['lot_key'])
                     record_info_instance.id_lot = lot_instance
 
                 record_info_instance.save()

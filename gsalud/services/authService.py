@@ -2,7 +2,7 @@
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.shortcuts import get_object_or_404
-from gsalud.models import Users
+from gsalud.models import User
 import json
 
 
@@ -25,10 +25,13 @@ def is_auth(requestDict):
             user_id = validated_token.payload['user_id']
 
             # Check if the user exists
-            user_instance = get_object_or_404(Users, pk=user_id)
+            user_instance = get_object_or_404(User, pk=user_id)
 
             # Check if the user role is valid
             role_instance = user_instance.id_role
+
+            if role_instance == None:
+                return False, 'El usuario no tiene rol'
 
             # Parse the permissions for the role
             permissions = role_instance.configs
@@ -38,12 +41,9 @@ def is_auth(requestDict):
             if actual_path == '':
                 return True, 'Authorized'
             for permission in permissions_list:
-                permission_route = permission['route'].strip().lstrip(
-                    '/')  # Strip spaces and leading '/'
-                print(
-                    f"Comparing actual_path '{actual_path}' with permission_route '{permission_route}'")
+                # Strip spaces and leading '/'
+                permission_route = permission['route'].strip().lstrip('/') 
                 if actual_path.startswith(permission_route):
-                    print(actual_path, permission)
                     return True, "Authorized"
 
             return False, "User does not have permission for this resource"

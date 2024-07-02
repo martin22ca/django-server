@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from django.db import connection
-from gsalud.models import Roles,Users
+from gsalud.models import Role,User
 from gsalud.serializers import RolesSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -24,7 +24,7 @@ def getRoles(request: Any) -> JsonResponse:
     """
     try:
         if request.method == 'GET':
-            roles = Roles.objects.exclude(id=0)
+            roles = Role.objects.exclude(id=0)
             serializer = RolesSerializer(roles, many=True)
             return JsonResponse({'success': True, 'data': serializer.data}, safe=False)
         else:
@@ -40,7 +40,7 @@ def get_role_user(request: Any) -> JsonResponse:
             validated_token = RefreshToken(token)
             user_id = validated_token.payload['user_id']
 
-            user_instance = Users.objects.get(pk=user_id)
+            user_instance = User.objects.get(pk=user_id)
             role_instance = user_instance.id_role
             
             serializer = RolesSerializer(role_instance)
@@ -64,8 +64,8 @@ def updateRole(request):
         
         # Try to retrieve the role instance
         try:
-            role_instance = Roles.objects.get(id=id_role)
-        except Roles.DoesNotExist:
+            role_instance = Role.objects.get(id=id_role)
+        except Role.DoesNotExist:
             raise NotFound('Role not found')
 
         # Prepare the data for the update

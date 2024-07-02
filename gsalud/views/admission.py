@@ -1,7 +1,7 @@
 from typing import Dict
 from django.http import JsonResponse
 from passlib.hash import bcrypt
-from gsalud.models import Users
+from gsalud.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from rest_framework.decorators import api_view
@@ -16,13 +16,11 @@ def login(request):
         user_pass = data['user_pass']
 
         # Check if the user exists in the database
-        user = Users.objects.get(user_name=userName)
+        user = User.objects.get(user_name=userName)
         user_id = user.id
         full_name = user.first_name + ' ' + user.last_name
-
-        # Verify the hashed password
-        hashed_password = user.user_pass
-        is_valid_password = bcrypt.verify(user_pass, hashed_password)
+        
+        is_valid_password = bcrypt.verify(user_pass, user.user_pass)
 
         if is_valid_password:
             print('login successful')
@@ -33,7 +31,7 @@ def login(request):
             # Password doesn't match
             return JsonResponse({'success': False, 'error': 'Usuario y/o contraseña incorrectos'})
 
-    except Users.DoesNotExist:
+    except User.DoesNotExist:
         # Username doesn't exist
         return JsonResponse({'success': False, 'error': 'Usuario y/o contraseña incorrectos'})
 

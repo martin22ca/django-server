@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from gsalud.services.filterTable import get_table_data
-from gsalud.models import Lots
+from gsalud.models import Lot
 from gsalud.serializers import LotsSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -54,7 +54,7 @@ def updateLot(request):
             return Response({'success': False, 'error': 'Lot ID is required for updating.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Retrieve the Lot instance to update
-        lot_instance = Lots.objects.get(id=id_lot)
+        lot_instance = Lot.objects.get(id=id_lot)
         data = {key: value for key, value in data.items() if value is not None}
         data.pop('id_lot')
 
@@ -71,7 +71,7 @@ def updateLot(request):
         else:
             return Response({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-    except Lots.DoesNotExist:
+    except Lot.DoesNotExist:
         return Response({'success': False, 'error': 'Lot with the provided ID does not exist.'}, status=status.HTTP_404_NOT_FOUND)
 
     except Exception as e:

@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from passlib.hash import bcrypt
-from gsalud.models import Users, Roles
+from gsalud.models import User, Role
 from gsalud.serializers import UsersSerializer
 from gsalud.services.filterTable import get_table_data
 from rest_framework import status
@@ -23,10 +23,10 @@ def getUsers(request):
 def getUsersByRole(request):
     try:
         id_role = request.GET.get('id_role')
-        users = Users.objects.filter(id_role=id_role)
+        users = User.objects.filter(id_role=id_role)
         serializer = UsersSerializer(users, many=True)
         return Response({'success': True, 'data': serializer.data}, status=status.HTTP_200_OK)
-    except Users.DoesNotExist:
+    except User.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
 
@@ -49,7 +49,7 @@ def registerUser(request):
 
 
 @api_view(['PUT'])
-def updateUser(request):
+def update_user(request):
     """
     Update an existing user's details in a Django application.
 
@@ -71,8 +71,8 @@ def updateUser(request):
         ) if value is not None and key not in excluded_keys}
 
         try:
-            user_instance = Users.objects.get(pk=user_id)
-        except Users.DoesNotExist:
+            user_instance = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
             return Response({'success': False, 'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         if 'user_pass' in data:
@@ -115,12 +115,12 @@ def updateUserRoles(request):
             return Response({'success': False, 'error': 'User IDs should be provided as a list.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the role exists
-        role_instance = Roles.objects.filter(pk=id_role).first()
+        role_instance = Role.objects.filter(pk=id_role).first()
         if not role_instance:
             return Response({'success': False, 'error': 'Role not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Get all users currently with the specified role
-        users_with_role = Users.objects.filter(id_role=id_role)
+        users_with_role = User.objects.filter(id_role=id_role)
 
         # Update users who currently have the role but are not in the new list of user IDs
         users_to_nullify = users_with_role.exclude(pk__in=users_ids)
@@ -129,7 +129,7 @@ def updateUserRoles(request):
             user.save()
 
         # Update the role for the users in the provided list of user IDs
-        users_to_update = Users.objects.filter(pk__in=users_ids)
+        users_to_update = User.objects.filter(pk__in=users_ids)
         if not users_to_update.exists():
             return Response({'success': False, 'error': 'No users found with the provided IDs.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -150,7 +150,6 @@ def updateUserRoles(request):
 def deleteUser(request):
     try:
         data = request.data
-        print(data)
         user_id = data.get('id')
 
         if user_id is None:
@@ -158,8 +157,8 @@ def deleteUser(request):
 
         # Check if the user exists
         try:
-            user_instance = Users.objects.get(pk=user_id)
-        except Users.DoesNotExist:
+            user_instance = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
             return Response({'success': False, 'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Delete the user

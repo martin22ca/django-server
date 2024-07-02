@@ -1,8 +1,9 @@
 from email.policy import default
 from django.db import models
+from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 
 
-class Configs(models.Model):
+class Config(models.Model):
     value = models.TextField()
     description = models.TextField(blank=True, null=True)
     mod_date = models.DateTimeField(blank=True, null=True)
@@ -11,7 +12,7 @@ class Configs(models.Model):
         db_table = 'configs'
 
 
-class Roles(models.Model):
+class Role(models.Model):
     title = models.CharField()
     description = models.CharField()
     configs = models.TextField(blank=True, null=True)
@@ -20,13 +21,14 @@ class Roles(models.Model):
         db_table = 'roles'
 
 
-class Users(models.Model):
+class User(models.Model):
+    objects = BulkUpdateOrCreateQuerySet.as_manager()
     id_role = models.ForeignKey(
-        Roles, on_delete=models.SET_NULL, db_column='id_role', null=True, default=None)
+        Role, on_delete=models.SET_NULL, db_column='id_role', null=True, default=None)
     available = models.BooleanField(default=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    user_name = models.CharField(max_length=20)
+    user_name = models.CharField(max_length=50)
     user_pass = models.TextField()
     email_corp = models.CharField(max_length=100, blank=True, null=True)
     email_personal = models.CharField(max_length=100, blank=True, null=True)
@@ -44,7 +46,7 @@ class Users(models.Model):
         return self.user_name
 
 
-class Notifications(models.Model):
+class Notification(models.Model):
     title = models.CharField(max_length=10)
     not_text = models.TextField()
 
@@ -55,9 +57,9 @@ class Notifications(models.Model):
 # Many - Many intermediate table
 class UsersNotifications(models.Model):
     id_user = models.ForeignKey(
-        Users, on_delete=models.CASCADE, db_column='id_user')
+        User, on_delete=models.CASCADE, db_column='id_user')
     id_notification = models.ForeignKey(
-        Notifications, on_delete=models.CASCADE, db_column='id_notification')
+        Notification, on_delete=models.CASCADE, db_column='id_notification')
     viewed = models.BooleanField(default=False)
 
     class Meta:
@@ -75,38 +77,30 @@ class Particularity(models.Model):
         db_table = 'particularities'
 
 
-class Priorities(models.Model):
-    status = models.CharField(max_length=20)
-
-    class Meta:
-        db_table = 'priorities'
-
-    def __str__(self) -> str:
-        return self.status
-
-
-class Providers(models.Model):
+class Provider(models.Model):
+    objects = BulkUpdateOrCreateQuerySet.as_manager()
     id_provider = models.BigIntegerField(auto_created=False, primary_key=True)
-    id_priority = models.ForeignKey(
-        Priorities, models.DO_NOTHING, db_column='id_priority', blank=True, null=True)
     id_particularity = models.ForeignKey(
-        Particularity, models.DO_NOTHING, db_column='id_particularity', blank=True, null=True)
-    coordinator_number = models.IntegerField(blank=True, null=True)
+        Particularity, models.DO_NOTHING, db_column='id_particularity', null=True)
+    id_coordinator = models.IntegerField(blank=True, null=True)
     cuit = models.CharField(max_length=12, blank=True, null=True)
     address = models.CharField(max_length=100, blank=True, null=True)
     business_name = models.CharField(max_length=255, blank=True, null=True)
     business_location = models.CharField(max_length=50, blank=True, null=True)
     sancor_zone = models.CharField(max_length=100, blank=True, null=True)
     observation = models.TextField(blank=True, null=True)
+    priority = models.CharField(
+        max_length=20, default=None, blank=True, null=True)
 
     class Meta:
         db_table = 'providers'
 
 
-class Lots(models.Model):
+class Lot(models.Model):
+    objects = BulkUpdateOrCreateQuerySet.as_manager()
     id_user = models.ForeignKey(
-        'Users', models.DO_NOTHING, db_column='id_user', blank=True, null=True)
-    lot_key = models.CharField(max_length=10)
+        User, models.DO_NOTHING, db_column='id_user', blank=True, null=True)
+    lot_key = models.CharField(max_length=80)
     status = models.BooleanField()
     date_asignment = models.DateField(blank=True, null=True)
     date_return = models.DateField(blank=True, null=True)
@@ -116,7 +110,7 @@ class Lots(models.Model):
         db_table = 'lots'
 
 
-class ReceiptTypes(models.Model):
+class ReceiptType(models.Model):
     receipt_short = models.CharField(max_length=2)
     receipt_text = models.CharField(max_length=50)
 
@@ -124,7 +118,7 @@ class ReceiptTypes(models.Model):
         db_table = 'receipt_types'
 
 
-class RecordTypes(models.Model):
+class RecordType(models.Model):
     record_name = models.CharField(max_length=20)
     record_desc = models.CharField(max_length=50)
 
@@ -132,19 +126,19 @@ class RecordTypes(models.Model):
         db_table = 'record_types'
 
 
-class Records(models.Model):
+class Record(models.Model):
+    objects = BulkUpdateOrCreateQuerySet.as_manager()
     id_record = models.BigIntegerField(auto_created=False, primary_key=True)
     id_provider = models.ForeignKey(
-        Providers, models.DO_NOTHING, db_column='id_provider')
+        Provider, models.DO_NOTHING, db_column='id_provider')
     id_receipt_type = models.ForeignKey(
-        'ReceiptTypes', models.SET_NULL,  db_column='id_receipt_type', blank=True, null=True)
+        ReceiptType, models.SET_NULL,  db_column='id_receipt_type', blank=True, null=True)
     id_record_type = models.ForeignKey(
-        'RecordTypes', models.SET_NULL, db_column='id_record_type', blank=True, null=True)
+        RecordType, models.SET_NULL, db_column='id_record_type', blank=True, null=True)
     date_liquid = models.DateField(blank=True, null=True, default=None)
     date_recep = models.DateField(blank=True, null=True)
     date_audi_vto = models.DateField(blank=True, null=True)
     date_period = models.DateField(blank=True, null=True)
-
     totcal = models.DecimalField(
         max_digits=16, decimal_places=2, blank=True, null=True)
     bruto = models.DecimalField(
@@ -200,14 +194,16 @@ class Records(models.Model):
 
 
 class RecordInfo(models.Model):
+    objects = BulkUpdateOrCreateQuerySet.as_manager()
     id_record = models.ForeignKey(
-        Records, models.DO_NOTHING, db_column='id_record')
+        Record, models.DO_NOTHING, db_column='id_record')
     id_lot = models.ForeignKey(
-        Lots, models.DO_NOTHING, db_column='id_lot', blank=True, null=True)
+        Lot, models.DO_NOTHING, db_column='id_lot', blank=True, null=True)
     date_assignment = models.DateField(blank=True, null=True)
     date_entry_digital = models.DateField(blank=True, null=True)
     date_entry_physical = models.DateField(blank=True, null=True)
-    seal_number = models.IntegerField(blank=True, null=True)
+    seal_number = models.CharField(
+        max_length=100, default=None, blank=True, null=True)
     observation = models.TextField(blank=True, null=True)
     date_close = models.DateField(blank=True, null=True)
     assigned = models.BooleanField(default=False)
@@ -219,7 +215,7 @@ class RecordInfo(models.Model):
 # Many - Many intermediate table
 class RecordsInfoUsers(models.Model):
     id_user = models.ForeignKey(
-        Users, on_delete=models.CASCADE, db_column='id_user')
+        User, on_delete=models.CASCADE, db_column='id_user')
     id_record_info = models.ForeignKey(
         'RecordInfo', on_delete=models.CASCADE, db_column='id_record_info')
     worked_on = models.BooleanField(default=True)
@@ -227,3 +223,18 @@ class RecordsInfoUsers(models.Model):
     class Meta:
         db_table = 'users_x_records_info'
         unique_together = ('id_user', 'id_record_info')
+
+
+class Feedback(models.Model):
+    title = models.CharField(max_length=70, null=False)
+    date_report = models.DateField(blank=True, null=True, default=None)
+    is_bug = models.BooleanField(default=False)
+    description = models.TextField(null=False)
+    priority = models.IntegerField(default=1)
+
+    class Meta:
+        db_table = 'feedback'  # Explicitly define table name (optional)
+        ordering = ['priority']  # Order bugs by priority by default
+
+    def __str__(self):
+        return self.title

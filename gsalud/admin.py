@@ -1,7 +1,6 @@
 from django.contrib import admin
-from gsalud.models import Users, UsersNotifications, Priorities, ReceiptTypes
+from gsalud.models import User, UsersNotifications,  ReceiptType
 
-admin.site.register(Users)
+admin.site.register(User)
 admin.site.register(UsersNotifications)
-admin.site.register(Priorities)
-admin.site.register(ReceiptTypes)
+admin.site.register(ReceiptType)

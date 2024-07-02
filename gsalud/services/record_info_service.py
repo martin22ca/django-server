@@ -2,10 +2,50 @@ from typing import List, Dict
 from django.core.exceptions import ObjectDoesNotExist
 from gsalud.serializers import RecordInfoSerializer
 from django.db import transaction
-from gsalud.models import RecordInfo, RecordsInfoUsers, Records
+from gsalud.models import RecordInfo, RecordsInfoUsers, Record
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def insertRecordsCases(newRecordInfoData):
+
+def insert_update_bulk_records_info(records_info, list_fields, match_field):
+    with transaction.atomic():
+        RecordInfo.objects.bulk_update_or_create(
+            records_info, list_fields, match_field=match_field)
+        return
+    
+def insert_bulk_cases(cases):
+    with transaction.atomic():
+        RecordInfo.objects.bulk_create(cases)
+
+def update_single_case(new_case_instance, force=False):
+    try:
+        with transaction.atomic():
+            id_record = new_case_instance.id_record.pk
+            old_case_instance = RecordInfo.objects.get(id_record=id_record)
+            old_case_instance.__dict__.update(new_case_instance.__dict__)
+            old_case_instance.save()
+        return True, f"Updated record {old_case_instance.pk}"
+    except RecordInfo.DoesNotExist:
+        return False, f"Record with id {id_record} does not exist."
+    except Exception as e:
+        return False, f"Error updating record {id_record}: {e}"
+
+def update_bulk_cases(case_instances, max_workers=5):
+    results = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_record = {executor.submit(update_single_case, case): case for case in case_instances}
+        for future in as_completed(future_to_record):
+            record = future_to_record[future]
+            try:
+                success, message = future.result()
+                results.append((success, message))
+            except Exception as exc:
+                results.append((False, f"Record {record.pk} generated an exception: {exc}"))
+    for i,j in results:
+        if i == False:
+            print(j)
+
+def insertRecordsCases(newRecordInfoData: List[dict]):
     """
     Insert new record information data into the database.
 
@@ -87,8 +127,8 @@ def createRecordInfo(id_record: int) -> bool:
         bool: True if the record information data is successfully inserted into the database, False otherwise.
     """
     try:
-        Records.objects.get(pk=id_record)
-    except Records.DoesNotExist:
+        Record.objects.get(pk=id_record)
+    except Record.DoesNotExist:
         return None
 
     newRecordInfoData = {'id_record': id_record, 'assigned': False}

@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from gsalud.models import Users, Configs, Providers, ReceiptTypes, RecordTypes, Records, RecordInfo, Priorities, RecordsInfoUsers, Particularity, Lots, Roles
+from gsalud.models import User, Config, Provider, ReceiptType, RecordType, Lot, Role, Feedback 
+from gsalud.models import Record, RecordInfo, RecordsInfoUsers, Particularity
 
 
 class DynamicFieldsSerializer(serializers.ModelSerializer):
@@ -20,37 +21,31 @@ class DynamicFieldsSerializer(serializers.ModelSerializer):
 
 class ConfigsSerializer(DynamicFieldsSerializer):
     class Meta:
-        model = Configs
+        model = Config
         fields = '__all__'
 
 
 class UsersSerializer(DynamicFieldsSerializer):
     class Meta:
-        model = Users
+        model = User
         fields = '__all__'
 
 
 class ProvidersSerializer(DynamicFieldsSerializer):
     class Meta:
-        model = Providers
+        model = Provider
         fields = '__all__'
 
 
 class ReceitTypesSerializer(DynamicFieldsSerializer):
     class Meta:
-        model = ReceiptTypes
+        model = ReceiptType
         fields = '__all__'
 
 
 class RecordTypesSerializer(DynamicFieldsSerializer):
     class Meta:
-        model = RecordTypes
-        fields = '__all__'
-
-
-class PrioritiesSerializer(DynamicFieldsSerializer):
-    class Meta:
-        model = Priorities
+        model = RecordType
         fields = '__all__'
 
 
@@ -63,7 +58,7 @@ class ParticularitiesSerializer(DynamicFieldsSerializer):
 class RecordSerializer(DynamicFieldsSerializer):
 
     class Meta:
-        model = Records
+        model = Record
         fields = '__all__'
 
 
@@ -84,12 +79,18 @@ class RecordsUsersSerializer(DynamicFieldsSerializer):
 class LotsSerializer(DynamicFieldsSerializer):
 
     class Meta:
-        model = Lots
+        model = Lot
         fields = '__all__'
 
 
 class RolesSerializer(DynamicFieldsSerializer):
 
     class Meta:
-        model = Roles
+        model = Role
+        fields = '__all__'
+
+class FeedbackSerializer(DynamicFieldsSerializer):
+
+    class Meta:
+        model = Feedback
         fields = '__all__'

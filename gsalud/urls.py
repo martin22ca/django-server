@@ -20,10 +20,11 @@ from django.urls import include, path
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('admission/', include('gsalud.paths.admission_urls')),
-    path('records/', include('gsalud.paths.records_urls')),
+    path('records/', include('gsalud.paths.record_urls')),
     path('config/', include('gsalud.paths.config_urls')),
-    path('users/', include('gsalud.paths.users_urls')),
-    path('providers/', include('gsalud.paths.providers_urls')),
-    path('lots/', include('gsalud.paths.lots_urls')),
-    path('roles/', include('gsalud.paths.roles_urls')),
+    path('users/', include('gsalud.paths.user_urls')),
+    path('providers/', include('gsalud.paths.provider_urls')),
+    path('lots/', include('gsalud.paths.lot_urls')),
+    path('roles/', include('gsalud.paths.role_urls')),
+    path('feedback/', include('gsalud.paths.feedback_urls')),
 ]

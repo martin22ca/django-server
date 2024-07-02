@@ -1,6 +1,6 @@
 from django.urls import path
-from gsalud.views.configsViews import config_list, getFilterOptions, set_config_cols, config_cols
-from gsalud.views.dailySetupViews import post_assignment, post_db, post_lots
+from gsalud.views.configs_views import config_list, getFilterOptions, set_config_cols, config_cols
+from gsalud.views.daily_setup_views import post_assignment, post_db, post_lots
 
 urlpatterns = [
     path('', config_list),

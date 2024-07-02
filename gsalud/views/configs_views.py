@@ -1,9 +1,9 @@
 import json
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from gsalud.models import Configs
+from gsalud.models import Config
 from gsalud.serializers import ConfigsSerializer
-from gsalud.services.configService import handle_config
+from gsalud.services.config_service import handle_config
 from gsalud.services.filterTable import filters
 
 
@@ -11,7 +11,7 @@ from gsalud.services.filterTable import filters
 def config_list(request):
     data_string = request.GET.dict()['idList']
     config_list = json.loads(data_string)
-    objs = Configs.objects.filter(id__in=config_list)
+    objs = Config.objects.filter(id__in=config_list)
     serializer = ConfigsSerializer(objs, many=True)
     return JsonResponse(serializer.data, safe=False)
 
@@ -21,7 +21,7 @@ def config_cols(request):
     try:
         data = request.GET.dict()
         id_config = data['id']
-        obj = Configs.objects.get(pk=id_config)
+        obj = Config.objects.get(pk=id_config)
         serializer = ConfigsSerializer(obj, many=False)
         return JsonResponse(serializer.data)
     except Exception as e:

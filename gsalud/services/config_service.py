@@ -1,5 +1,5 @@
 from gsalud.serializers import ConfigsSerializer
-from gsalud.models import Configs
+from gsalud.models import Config
 from datetime import datetime
 
 
@@ -18,7 +18,7 @@ def handle_config(id, newValue):
 
     try:
         new_date = datetime.now()
-        config_obj, created = Configs.objects.get_or_create(
+        config_obj, created = Config.objects.get_or_create(
             id=id, defaults={'value': newValue, 'mod_date': new_date})
         if not created:
             # Update existing Config
@@ -35,7 +35,19 @@ def handle_config(id, newValue):
             # Create new Config
             return True
 
-    except Configs.DoesNotExist:
+    except Config.DoesNotExist:
+        print('Error: Config with ID', id, 'does not exist.')
+        return False
+
+    # Handle other potential exceptions (e.g., database errors) here
+
+
+def update_date_config(id):
+    try:
+        new_date = datetime.now()
+        Config.objects.filter(pk=id).update(mod_date=new_date)
+
+    except Config.DoesNotExist:
         print('Error: Config with ID', id, 'does not exist.')
         return False
 
