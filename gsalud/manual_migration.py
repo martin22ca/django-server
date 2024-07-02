@@ -1,3 +1,5 @@
+
+
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -31,6 +33,10 @@ class Migration(migrations.Migration):
         migrations.RenameModel(
             old_name='Users',
             new_name='User',
+        ),
+        migrations.RemoveField(
+            model_name='providers',
+            name='id_priority',
         ),
         migrations.RenameModel(
             old_name='Providers',
