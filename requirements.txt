@@ -12,6 +12,7 @@ django-cors-headers==4.3.0
 django-environ==0.11.2
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
+django-bulk-update-or-create
 et-xmlfile==1.1.0
 hyperlink==21.0.0
 idna==3.6
