@@ -93,7 +93,7 @@ def get_records_audit(request):
             observation=F('recordinfo__observation'),
             id_user=F('recordinfo__id_lot__id_user')
         ).filter(
-            recordinfo__id_lot__id_user=16
+            recordinfo__id_lot__id_user=id_user
         ).values(
             'id_record', 'part_g_salud', 'part_prevencion','priority_status', 'id_provider_key', 'lot_key',
             'business_name', 'business_location', 'id_coordinator', 'record_total',
@@ -137,18 +137,39 @@ def get_user_records(request):
         token = request.GET.dict()['token']
         validated_token = RefreshToken(token)
         id_user = int(validated_token.payload['user_id'])
-        base_query = """select ri.id_record, uxri.id as uxri_id,uxri.worked_on,ri.assigned,r.id_provider,business_name, rt.record_name ,ri.id_lot, 
-                        l.id_user,p.priority, p.id_coordinator,r.record_total,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,
-                        ri.observation, l.lot_key, p.id_particularity
-                        from users_x_records_info uxri 
-                        inner join records_info ri  on ri.id  = uxri.id_record_info
-                        inner join records r ON ri.id_record  = r.id_record
-                        left join record_types rt on rt.id = r.id_record_type
-                        inner join providers p  on r.id_provider = p.id_provider 
-                        left join particularities p2 on p2.id = p.id_particularity
-                        left join lots l on ri.id_lot = l.id """
-        modifier = f'uxri.id_user = {id_user}'
-        return get_table_data(request, base_query, [modifier])
+        base_queryset = RecordsInfoUsers.objects.select_related(
+            'id_record_info__id_record',
+            'id_record_info__id_record__id_provider',
+            'id_record_info__id_record__id_record_type',
+            'id_record_info__id_lot',
+            'id_record_info__id_record__id_provider__id_particularity'
+        ).annotate(
+            id_record=F('id_record_info__id_record__id_record'),
+            uxri_id=F('id'),
+            assigned=F('id_record_info__assigned'),
+            id_provider=F('id_record_info__id_record__id_provider__id_provider'),
+            business_name=F('id_record_info__id_record__id_provider__business_name'),
+            record_name=F('id_record_info__id_record__id_record_type__record_name'),
+            id_lot=F('id_record_info__id_lot__id'),
+            lot_user=F('id_record_info__id_lot__id_user'),
+            priority=F('id_record_info__id_record__id_provider__priority'),
+            id_coordinator=F('id_record_info__id_record__id_provider__id_coordinator'),
+            record_total=F('id_record_info__id_record__record_total'),
+            date_entry_digital=F('id_record_info__date_entry_digital'),
+            date_entry_physical=F('id_record_info__date_entry_physical'),
+            seal_number=F('id_record_info__seal_number'),
+            observation=F('id_record_info__observation'),
+            lot_key=F('id_record_info__id_lot__lot_key'),
+            id_particularity=F('id_record_info__id_record__id_provider__id_particularity__id')
+        ).filter(
+            id_user=id_user
+        ).values(
+            'id_record', 'uxri_id', 'worked_on', 'assigned', 'id_provider', 'business_name', 
+            'record_name', 'id_lot', 'lot_user', 'priority', 'id_coordinator', 'record_total', 
+            'date_entry_digital', 'date_entry_physical', 'seal_number', 'observation', 
+            'lot_key', 'id_particularity'
+        )
+        return apply_filters(request, base_queryset)
 
     except Exception as e:
         print(e)

@@ -6,7 +6,7 @@ from gsalud.services.filterTable import get_table_data
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from gsalud.services.authService import is_auth
+from gsalud.services.auth_service import is_auth
 
 
 def getUsers(request):

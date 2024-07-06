@@ -5,7 +5,7 @@ from gsalud.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from rest_framework.decorators import api_view
-from gsalud.services.authService import is_auth
+from gsalud.services.auth_service import is_auth
 
 
 @api_view(['POST'])
