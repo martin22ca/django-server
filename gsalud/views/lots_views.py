@@ -1,22 +1,25 @@
 from django.http import JsonResponse
+from django.db.models import Count
 from gsalud.services.filterTable import get_table_data
+from gsalud.services.ORM_filters import apply_filters
+from gsalud.services.users_service import get_user_by_pk
 from gsalud.models import Lot
 from gsalud.serializers import LotsSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-
 from gsalud.models import RecordInfo
 
 
 @api_view(['GET'])
 def getLots(request):
     try:
-        base_query = '''select l.*,MAX(u.user_name) AS user_name,COUNT(DISTINCT ri.id) as total_records from lots l
-                        left join users u ON l.id_user = u.id  
-                        left join records_info ri ON l.id  = ri.id_lot 
-                        '''
-        return get_table_data(request, base_query, group_by='l.id')
+        base_queryset = Lot.objects.annotate(
+            total_records=Count('recordinfo', distinct=True)
+        ).values(
+            'id', 'lot_key', 'date_asignment', 'date_return', 'date_departure', 'status', 'total_records'
+        )
+        return apply_filters(request, base_queryset)
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
@@ -44,7 +47,7 @@ def popRecordFromLot(request):
 
 
 @api_view(['PUT'])
-def updateLot(request):
+def update_lot(request):
     try:
         data = request.data
         # Using get() to avoid KeyError if 'id_lot' is not in data
@@ -58,8 +61,13 @@ def updateLot(request):
         data = {key: value for key, value in data.items() if value is not None}
         data.pop('id_lot')
 
-        if "id_user" not in data:
-            data['id_user'] = None
+        if "id_user" in data:
+            id_user = data['id_user']
+            records_info = RecordInfo.objects.filter(id_lot=id_lot)
+            for i in records_info:
+                if i.id_auditor == None:
+                    i.id_auditor = get_user_by_pk(id_user)
+                    i.save()
 
         serializer = LotsSerializer(lot_instance, data=data, partial=True)
 

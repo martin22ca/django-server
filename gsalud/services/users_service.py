@@ -72,6 +72,9 @@ def get_user_by_username(user_name):
         return False, str(e)
 
 
+def get_user_by_pk(id_user):
+    return User.objects.get(pk=id_user)
+
 def get_all_usernames() -> Union[dict, bool]:
     """
     Retrieves all users from the database and returns a dictionary mapping each user's username to their ID.

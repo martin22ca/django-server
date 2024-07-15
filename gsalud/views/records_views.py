@@ -1,13 +1,13 @@
 from django.db import transaction
 from django.http import JsonResponse
 from rest_framework_simplejwt.tokens import RefreshToken
-from gsalud.services.filterTable import get_table_data
 from gsalud.services.ORM_filters import apply_filters
 from rest_framework.decorators import api_view
 from gsalud.models import RecordsInfoUsers, RecordInfo, User, Record
 from gsalud.services.lots_service import get_lot_from_key
 from gsalud.services.record_info_service import removeRecordFromUser, createRecordInfo
 from django.db.models import Prefetch, F
+from django.db.models import Case, When, Value, BooleanField
 
 
 @api_view(['GET'])
@@ -17,7 +17,7 @@ def get_records_db(request):
             receipt_short=F('id_receipt_type__receipt_short'),
             record_name=F('id_record_type__record_name')
         ).values(
-            'id_record', 'id_provider', 'id_receipt_type', 'id_record_type', 'date_liquid', 'date_recep', 'date_audi_vto', 'date_period',
+            'id', 'record_key', 'id_provider', 'id_receipt_type', 'id_record_type', 'date_liquid', 'date_recep', 'date_audi_vto', 'date_period',
             'totcal', 'bruto', 'ivacal', 'prestac_grava', 'debcal', 'inter_debcal', 'debito', 'debtot', 'a_pagar',
             'debito_iva', 'receipt_num', 'receipt_date', 'exento', 'gravado', 'iva_factu', 'iva_perce', 'iibb',
             'record_total', 'neto_impues', 'resu_liqui', 'cuenta', 'ambu_total', 'inter_total', 'audit_group',
@@ -55,7 +55,7 @@ def get_records_assigned(request):
             receipt_short=F('id_receipt_type__receipt_short'),
             record_name=F('id_record_type__record_name')
         ).values(
-            'id_record', 'id_provider', 'id_receipt_type', 'id_record_type', 'date_liquid', 'date_recep', 'date_audi_vto', 'date_period',
+            'id', 'record_key', 'id_provider', 'id_receipt_type', 'id_record_type', 'date_liquid', 'date_recep', 'date_audi_vto', 'date_period',
             'totcal', 'bruto', 'ivacal', 'prestac_grava', 'debcal', 'inter_debcal', 'debito', 'debtot', 'a_pagar', 'debito_iva',
             'receipt_num', 'receipt_date', 'exento', 'gravado', 'iva_factu', 'iva_perce', 'iibb', 'record_total', 'neto_impues',
             'resu_liqui', 'cuenta', 'ambu_total', 'inter_total', 'audit_group', 'date_vto_carga', 'status', 'assigned_user', 'avance',
@@ -77,14 +77,13 @@ def get_records_audit(request):
         id_user = int(validated_token.payload['user_id'])
         base_queryset = Record.objects.select_related(
             'id_provider__id_particularity',
-            'id_provider__id_priority',
             'recordinfo__id_lot'
         ).annotate(
             part_g_salud=F('id_provider__id_particularity__part_g_salud'),
             part_prevencion=F(
                 'id_provider__id_particularity__part_prevencion'),
-            priority_status=F('id_provider__id_priority__status'),
             id_provider_key=F('id_provider__id_provider'),
+            priority=F('id_provider__priority'),
             lot_key=F('recordinfo__id_lot__lot_key'),
             business_name=F('id_provider__business_name'),
             business_location=F('id_provider__business_location'),
@@ -95,7 +94,7 @@ def get_records_audit(request):
         ).filter(
             recordinfo__id_lot__id_user=id_user
         ).values(
-            'id_record', 'part_g_salud', 'part_prevencion','priority_status', 'id_provider_key', 'lot_key',
+            'id', 'record_key', 'part_g_salud', 'part_prevencion', 'priority', 'id_provider_key', 'lot_key',
             'business_name', 'business_location', 'id_coordinator', 'record_total',
             'date_asignment', 'observation', 'id_user'
         )
@@ -110,21 +109,30 @@ def get_records_audit(request):
 def get_records_info(request):
     try:
         id_lot = request.GET.dict()['id_lot']
-        base_query = """select ri.id_record,ri.assigned,r.id_provider,business_name,ri.id_lot, 
-                        l.id_user, p.id_coordinator,r.record_total,ri.date_entry_digital,ri.date_entry_physical,ri.seal_number,
-                        ri.observation, l.lot_key, rt2.receipt_short ,rt.record_name
-                        from records_info ri 
-                        left join records r ON ri.id_record  = r.id_record
-                        left join record_types rt on rt.id = r.id_record_type
-                        left join providers p  on r.id_provider = p.id_provider 
-                        left join lots l on ri.id_lot = l.id
-                        LEFT JOIN receipt_types rt2 ON r.id_receipt_type =rt2.id
-                        """
-        if id_lot:
-            modifier = f'ri.id_lot = {id_lot}'
-            return get_table_data(request, base_query, [modifier])
-        else:
-            return get_table_data(request, base_query)
+        base_queryset = RecordInfo.objects.select_related(
+            'id_record__id_provider',
+            'id_record__id_record_type',
+            'id_record__id_receipt_type',
+        ).annotate(
+            record_key=F('id_record__record_key'),
+            id_provider=F('id_record__id_provider__id_provider'),
+            business_name=F('id_record__id_provider__business_name'),
+            lot_user=F('id_auditor__user_name'),
+            id_coordinator=F('id_record__id_provider__id_coordinator'),
+            record_total=F('id_record__record_total'),
+            lot_key=F('id_lot__lot_key'),
+            receipt_short=F('id_record__id_receipt_type__receipt_short'),
+            record_name=F('id_record__id_record_type__record_name')
+        ).filter(
+            id_lot=id_lot
+        ).values(
+            'id_record', 'record_key', 'assigned', 'id_provider', 'business_name', 'id_lot',
+            'lot_user', 'id_coordinator', 'record_total', 'date_entry_digital',
+            'date_entry_physical', 'seal_number', 'observation', 'lot_key',
+            'receipt_short', 'record_name'
+        )
+
+        return apply_filters(request, base_queryset)
 
     except Exception as e:
         print(e)
@@ -142,32 +150,48 @@ def get_user_records(request):
             'id_record_info__id_record__id_provider',
             'id_record_info__id_record__id_record_type',
             'id_record_info__id_lot',
-            'id_record_info__id_record__id_provider__id_particularity'
+            'id_record_info__id_record__id_provider__id_particularity',
+            'id_record_info__id_auditor'
         ).annotate(
-            id_record=F('id_record_info__id_record__id_record'),
+            record_key=F('id_record_info__id_record__record_key'),
             uxri_id=F('id'),
             assigned=F('id_record_info__assigned'),
-            id_provider=F('id_record_info__id_record__id_provider__id_provider'),
-            business_name=F('id_record_info__id_record__id_provider__business_name'),
-            record_name=F('id_record_info__id_record__id_record_type__record_name'),
+            id_provider=F(
+                'id_record_info__id_record__id_provider__id_provider'),
+            business_name=F(
+                'id_record_info__id_record__id_provider__business_name'),
+            record_name=F(
+                'id_record_info__id_record__id_record_type__record_name'),
             id_lot=F('id_record_info__id_lot__id'),
-            lot_user=F('id_record_info__id_lot__id_user'),
+            id_auditor=F('id_record_info__id_auditor'),
+            auditor=F('id_record_info__id_auditor__user_name'),
             priority=F('id_record_info__id_record__id_provider__priority'),
-            id_coordinator=F('id_record_info__id_record__id_provider__id_coordinator'),
+            id_coordinator=F(
+                'id_record_info__id_record__id_provider__id_coordinator'),
             record_total=F('id_record_info__id_record__record_total'),
             date_entry_digital=F('id_record_info__date_entry_digital'),
             date_entry_physical=F('id_record_info__date_entry_physical'),
             seal_number=F('id_record_info__seal_number'),
             observation=F('id_record_info__observation'),
             lot_key=F('id_record_info__id_lot__lot_key'),
-            id_particularity=F('id_record_info__id_record__id_provider__id_particularity__id')
+            part_prevencion=Case(
+                When(id_record_info__id_record__id_provider__id_particularity__part_prevencion__isnull=False, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            ),
+            part_g_salud=Case(
+                When(
+                    id_record_info__id_record__id_provider__id_particularity__part_g_salud__isnull=False, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            )
         ).filter(
             id_user=id_user
         ).values(
-            'id_record', 'uxri_id', 'worked_on', 'assigned', 'id_provider', 'business_name', 
-            'record_name', 'id_lot', 'lot_user', 'priority', 'id_coordinator', 'record_total', 
-            'date_entry_digital', 'date_entry_physical', 'seal_number', 'observation', 
-            'lot_key', 'id_particularity'
+            'id', 'record_key', 'uxri_id', 'worked_on', 'assigned', 'id_provider', 'business_name',
+            'record_name', 'id_lot', 'id_auditor', 'auditor', 'priority', 'id_coordinator', 'record_total',
+            'date_entry_digital', 'date_entry_physical', 'seal_number', 'observation',
+            'lot_key', 'part_prevencion', 'part_g_salud'
         )
         return apply_filters(request, base_queryset)
 
@@ -177,26 +201,35 @@ def get_user_records(request):
 
 
 @api_view(['POST'])
-def addRecordtoUser(request):
+def add_record_to_user(request):
     try:
         warning = ''
-        requestDict = request.data
-        token = requestDict['token']
+        token = request.data['token']
         validated_token = RefreshToken(token)
-        id_record = requestDict['id_record'],
+        record_key = request.data['record_key'],
         id_user = int(validated_token.payload['user_id'])
 
+        if record_key is None:
+            return JsonResponse({'success': False, 'error': 'El id no existe'})
+
+        # BUG
+        record_key = record_key[0]
         # Check if the record exists
-        record_info_instance = RecordInfo.objects.filter(id_record=id_record)
+        record_instance = Record.objects.filter(record_key=str(record_key))
+        if not record_instance.exists():
+            return JsonResponse({'success': False, 'error': 'El expediente no existe'})
+
+        record_info_instance = RecordInfo.objects.filter(
+            id_record=record_instance.first().pk)
         if not record_info_instance.exists():
-            res = createRecordInfo(requestDict['id_record'])
+            res = createRecordInfo(record_instance.first().pk)
             if res:
                 warning = '- El expediente no estaba asignado'
             else:
-                return JsonResponse({'success': False, 'error': 'El expediente no existe o no esta asignado'})
+                return JsonResponse({'success': False, 'error': 'El expediente no existe'})
 
         user_instance = User.objects.filter(id=id_user).first()
-        record_info_id = record_info_instance.first().id
+        record_info_id = record_info_instance.first().pk
 
         record_user_exists = RecordsInfoUsers.objects.filter(
             id_record_info=record_info_id, id_user=id_user).exists()
@@ -213,27 +246,43 @@ def addRecordtoUser(request):
 
 
 @api_view(['PUT'])
-def updateRecordtoUser(request):
+def update_record_to_user(request):
     try:
-        requestDict = request.data
-        token = requestDict['token']
+        request_dict = request.data
+        token = request_dict['token']
         validated_token = RefreshToken(token)
-        id_record_new = requestDict['id_record_new']
-        id_record_old = requestDict['id_record_old'],
+        new_record_key = request_dict['new_record_key']
+        old_record_key = request_dict['old_record_key'],
+
+        # BUG
+        old_record_key = old_record_key[0]
         id_user = int(validated_token.payload['user_id'])
 
         # Check if the new record exists
-        new_record_info_instance = RecordInfo.objects.filter(
-            id_record=id_record_new)
-        if not new_record_info_instance.exists():
+        new_record_instance = Record.objects.filter(
+            record_key=str(new_record_key))
+        if not new_record_instance.exists():
             return JsonResponse({'success': False, 'error': 'El expediente no existe'})
 
+        new_record_info_instance = RecordInfo.objects.filter(
+            id_record=new_record_instance.first().pk)
+        if not new_record_info_instance.exists():
+            res = createRecordInfo(new_record_instance.first().pk)
+            if res:
+                warning = '- El expediente no estaba asignado'
+            else:
+                return JsonResponse({'success': False, 'error': 'El expediente no existe'})
+
         # Check already active on use
-        if (RecordsInfoUsers.objects.filter(id_record_info=new_record_info_instance.first().id, id_user=id_user).exists()):
+        if (RecordsInfoUsers.objects.filter(id_record_info=new_record_info_instance.first().pk, id_user=id_user).exists()):
             return JsonResponse({'success': False, 'error': 'Ya Expediente ya en la Tabla'})
 
+        old_record_instance = Record.objects.filter(
+            record_key=str(old_record_key))
+        if not old_record_instance.exists():
+            return JsonResponse({'success': False, 'error': 'El viejo expediente no existe'})
         id_old_record_info = RecordInfo.objects.filter(
-            id_record=id_record_old).first().id
+            id_record=old_record_instance.first().pk).first().pk
 
         old_Records_Info_Users_instance = RecordsInfoUsers.objects.filter(
             id_record_info=id_old_record_info, id_user=id_user).first()
@@ -248,7 +297,7 @@ def updateRecordtoUser(request):
 
 
 @api_view(['PUT'])
-def saveRecordtoUser(request):
+def save_record_to_user(request):
     """
     Update user record information in a transactional manner.
 
@@ -258,8 +307,7 @@ def saveRecordtoUser(request):
     Returns:
         A JSON response indicating success or failure.
     """
-    try:
-        with transaction.atomic():
+    with transaction.atomic():
             requestDict = request.data
             values_to_save = requestDict['values']
 
@@ -271,8 +319,7 @@ def saveRecordtoUser(request):
                 uxri_instance.worked_on = False
                 uxri_instance.save()
 
-                record_info_instance = RecordInfo.objects.filter(
-                    id=uxri_instance.id_record_info.id).first()
+                record_info_instance = RecordInfo.objects.filter(id=uxri_instance.id_record_info.pk).first()
                 if record_info_instance is None:
                     return JsonResponse({'success': False, 'error': f'RecordInfo instance with id {id_record_info} not found.'}, status=400)
 
@@ -287,19 +334,34 @@ def saveRecordtoUser(request):
 
                 record_info_instance.save()
 
-        return JsonResponse({'success': True, 'message': 'Guardados Cambios Expediente'})
+    return JsonResponse({'success': True, 'message': 'Guardados Cambios Expediente'})
 
-    except Exception as e:
-        print(e)
-        return JsonResponse({'success': False, 'error': str(e)})
 
 
 @api_view(['PUT'])
-def removeRecordUser(request):
+def remove_record_user(request):
     try:
-        requestDict = request.data
-        id_uxri = requestDict['id_uxri']
-        if removeRecordFromUser(id_uxri):
+        request_dict = request.data
+        token = request_dict['token']
+        validated_token = RefreshToken(token)
+        record_key = request_dict['record_key'],
+        id_user = int(validated_token.payload['user_id'])
+
+        # BUG
+        record_key = record_key[0]
+
+        record_instance = Record.objects.filter(record_key=record_key).first()
+        record_info_instance = RecordInfo.objects.filter(
+            id_record=record_instance.pk)
+        if not record_info_instance.exists():
+            return JsonResponse({'success': False, 'error': 'El expediente no existe'})
+
+        record_info_x_user_instance = RecordsInfoUsers.objects.filter(
+            id_record_info=record_info_instance.first().pk, id_user=id_user)
+        if not record_info_x_user_instance.exists():
+            return JsonResponse({'success': False, 'error': 'Expediente no assignado'})
+
+        if removeRecordFromUser(record_info_x_user_instance.first().pk):
             return JsonResponse({'success': True, 'message': 'Expediente desasignado'})
         else:
             return JsonResponse({'success': False, 'error': 'No se pudo desasignar el expediente'})

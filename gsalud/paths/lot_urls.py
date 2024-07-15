@@ -1,8 +1,8 @@
 from django.urls import path
-from gsalud.views.lotsViews import getLots, popRecordFromLot,updateLot
+from gsalud.views.lots_views import getLots, popRecordFromLot,update_lot
 
 urlpatterns = [
     path('', getLots),
     path('removefromlot', popRecordFromLot),
-    path('update', updateLot)
+    path('update', update_lot)
 ]

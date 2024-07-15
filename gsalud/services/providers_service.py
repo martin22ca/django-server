@@ -76,15 +76,18 @@ def updateParticularity(particularity, id_provider):
 def insert_update_particularity_by_provider(id_provider, new_particularity):
     try:
         try:
+            date = datetime.today().date()
             id_particularity = Provider.objects.get(
                 pk=id_provider).pk
             try:
                 particularity = Particularity.objects.get(pk=id_particularity)
-                particularity.part_prevencion = new_particularity
+                if particularity.part_prevencion != new_particularity:
+                    particularity.part_prevencion = new_particularity
+                    particularity.mod_prevencion=date
+
                 particularity.save()
                 return particularity
             except Particularity.DoesNotExist:
-                date = datetime.today().date()
                 particularity = Particularity(
                     mod_prevencion=date,
                     part_prevencion=new_particularity

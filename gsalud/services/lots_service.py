@@ -3,18 +3,19 @@ from django.db import IntegrityError,transaction
 from gsalud.serializers import LotsSerializer
 from datetime import datetime
 
-def get_lot_from_key(lot_key,auditor):
+def get_lot_from_key(lot_key):
     try:
+        key = str(lot_key)
+        key =key.upper()
         # Try to get an existing Lots instance with the provided lot_key
-        lot_instance = Lot.objects.get(lot_key=lot_key)
+        lot_instance = Lot.objects.get(lot_key=key)
         return lot_instance
     except Lot.DoesNotExist:
         try:
             # If the instance doesn't exist, create a new one
-            new_lot_instance = Lot(lot_key = lot_key,
+            new_lot_instance = Lot(lot_key = key,
                             status = True,
-                            date_asignment = datetime.now().date(),
-                            id_user=auditor) 
+                            date_asignment = datetime.now().date()) 
             new_lot_instance.save()
             return new_lot_instance
         except IntegrityError as e:

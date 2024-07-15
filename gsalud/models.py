@@ -98,8 +98,6 @@ class Provider(models.Model):
 
 class Lot(models.Model):
     objects = BulkUpdateOrCreateQuerySet.as_manager()
-    id_user = models.ForeignKey(
-        User, models.DO_NOTHING, db_column='id_user', blank=True, null=True)
     lot_key = models.CharField(max_length=80)
     status = models.BooleanField()
     date_asignment = models.DateField(blank=True, null=True)
@@ -128,7 +126,8 @@ class RecordType(models.Model):
 
 class Record(models.Model):
     objects = BulkUpdateOrCreateQuerySet.as_manager()
-    id_record = models.BigIntegerField(auto_created=False, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
+    record_key = models.CharField(max_length=255, unique=True)
     id_provider = models.ForeignKey(
         Provider, models.DO_NOTHING, db_column='id_provider')
     id_receipt_type = models.ForeignKey(
@@ -195,8 +194,10 @@ class Record(models.Model):
 
 class RecordInfo(models.Model):
     objects = BulkUpdateOrCreateQuerySet.as_manager()
-    id_record = models.ForeignKey(
-        Record, models.DO_NOTHING, db_column='id_record')
+    id_record = models.OneToOneField(
+        Record, models.DO_NOTHING, db_column='id_record',unique=True)
+    id_auditor = models.ForeignKey(
+        User, models.DO_NOTHING, db_column='id_auditor', blank=True, null=True)
     id_lot = models.ForeignKey(
         Lot, models.DO_NOTHING, db_column='id_lot', blank=True, null=True)
     date_assignment = models.DateField(blank=True, null=True)

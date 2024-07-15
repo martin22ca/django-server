@@ -6,13 +6,37 @@ import hashlib
 
 from gsalud.models import Config
 
-def safe_int(value):
-    if pd.isna(value):
-        return None
-    try:
-        return int(value)
-    except ValueError:
-        return None
+def safe_record_key(input_value):
+    # Check if the input is an integer or a float
+    if isinstance(input_value, (int, float)):
+        return str(input_value)
+    
+    # Check if the input is a string
+    elif isinstance(input_value, str):
+        # Remove spaces from the string
+        input_value = input_value.replace(' ', '')
+
+        # Remove everything after the last number found in the string
+        match_end = re.search(r'(\d+)([^\d]*)$', input_value)
+        if match_end:
+            input_value = input_value[:match_end.end(1)]
+        
+        # Remove everything before the first 'i' or number
+        match_start = re.search(r'([iI]|\d)', input_value)
+        if match_start:
+            input_value = input_value[match_start.start():]
+        
+        # Check if the string is all numbers
+        if input_value.isdigit():
+            return input_value
+        
+        # Check if the string starts with 'i' followed by numbers
+        if input_value.lower().startswith('i') and input_value[1:].isdigit():
+            return input_value.upper()
+    
+    # If conditions are not met, return None
+    print(type(input_value),input_value)
+    return None
 
 def string_to_obj(string_data, index_empty):
     array_data = json.loads(string_data)
@@ -42,7 +66,7 @@ def handle_uploaded_file(request, config_id):
 def calculate_hash(record_instance):
     # Convert the instance to a dictionary, excluding the 'hashed_val' field if it exists
     record_dict = {
-        'id_record': record_instance.id_record,
+        'record_key': record_instance.record_key,
         'id_provider': record_instance.id_provider.pk,
         'id_receipt_type': record_instance.id_receipt_type.pk,
         'date_liquid': record_instance.date_liquid,
