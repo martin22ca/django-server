@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from gsalud.models import Config
 from gsalud.serializers import ConfigsSerializer
 from gsalud.services.config_service import handle_config
-from gsalud.services.filterTable import filters
+from gsalud.services.ORM_filters import filters
 
 
 @api_view(['GET'])

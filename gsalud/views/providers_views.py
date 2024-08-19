@@ -1,6 +1,5 @@
 from django.http import JsonResponse
-from gsalud.services.filterTable import get_table_data
-from gsalud.services.ORM_filters import apply_filters
+from gsalud.services.ORM_filters import execute_query_with_filters
 from rest_framework.decorators import api_view
 from gsalud.serializers import ProvidersSerializer
 from rest_framework.response import Response
@@ -23,7 +22,8 @@ def get_providers(request):
             'priority','observation','id_particularity', 'part_g_salud',
             'part_prevencion', 'mod_prevencion', 'mod_g_salud'
         )
-        return apply_filters(request, base_queryset)
+        data = execute_query_with_filters(request, base_queryset)
+        return JsonResponse({'success': True, 'data': data})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})

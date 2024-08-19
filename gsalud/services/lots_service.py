@@ -14,8 +14,7 @@ def get_lot_from_key(lot_key):
         try:
             # If the instance doesn't exist, create a new one
             new_lot_instance = Lot(lot_key = key,
-                            status = True,
-                            date_asignment = datetime.now().date()) 
+                            status = True) 
             new_lot_instance.save()
             return new_lot_instance
         except IntegrityError as e:

@@ -1,13 +1,15 @@
 from django.db import transaction
 from django.http import JsonResponse
 from rest_framework_simplejwt.tokens import RefreshToken
-from gsalud.services.ORM_filters import apply_filters
+from gsalud.services.ORM_filters import execute_query_with_filters, execute_query
 from rest_framework.decorators import api_view
 from gsalud.models import RecordsInfoUsers, RecordInfo, User, Record
+from gsalud.utils.manage_date import ToChar, parse_date
+from gsalud.services.record_service import get_filtered_user_records
 from gsalud.services.lots_service import get_lot_from_key
-from gsalud.services.record_info_service import removeRecordFromUser, createRecordInfo
+from gsalud.services.record_info_service import remove_record_from_user, create_record_info, get_records_from_lot
 from django.db.models import Prefetch, F
-from django.db.models import Case, When, Value, BooleanField
+import traceback
 
 
 @api_view(['GET'])
@@ -24,11 +26,16 @@ def get_records_db(request):
             'date_vto_carga', 'status', 'assigned_user', 'avance',
             'receipt_short', 'record_name'
         )
-        return apply_filters(request, base_queryset)
+        data = execute_query_with_filters(request, base_queryset)
+        return JsonResponse({'success': True, 'data': data})
 
     except Exception as e:
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+def format_date(date_obj):
+    return date_obj.strftime('%d/%m/%Y') if date_obj else None
 
 
 @api_view(['GET'])
@@ -39,7 +46,8 @@ def get_records_assigned(request):
                      queryset=RecordInfo.objects.select_related('id_lot'))
         ).annotate(
             id_record_info=F('recordinfo__id'),
-            date_assignment_case=F('recordinfo__date_assignment'),
+            date_assignment_prev=F('recordinfo__date_assignment_prev'),
+            date_assignment_audit=F('recordinfo__date_assignment_audit'),
             date_entry_digital=F('recordinfo__date_entry_digital'),
             date_entry_physical=F('recordinfo__date_entry_physical'),
             seal_number=F('recordinfo__seal_number'),
@@ -49,7 +57,6 @@ def get_records_assigned(request):
             id_lot=F('recordinfo__id_lot__id'),
             lot_key=F('recordinfo__id_lot__lot_key'),
             lot_status=F('recordinfo__id_lot__status'),
-            date_assignment_lot=F('recordinfo__id_lot__date_asignment'),
             date_return=F('recordinfo__id_lot__date_return'),
             date_departure=F('recordinfo__id_lot__date_departure'),
             receipt_short=F('id_receipt_type__receipt_short'),
@@ -59,11 +66,12 @@ def get_records_assigned(request):
             'totcal', 'bruto', 'ivacal', 'prestac_grava', 'debcal', 'inter_debcal', 'debito', 'debtot', 'a_pagar', 'debito_iva',
             'receipt_num', 'receipt_date', 'exento', 'gravado', 'iva_factu', 'iva_perce', 'iibb', 'record_total', 'neto_impues',
             'resu_liqui', 'cuenta', 'ambu_total', 'inter_total', 'audit_group', 'date_vto_carga', 'status', 'assigned_user', 'avance',
-            'id_record_info', 'date_assignment_case', 'date_entry_digital', 'date_entry_physical', 'seal_number', 'observation',
-            'date_close', 'assigned', 'id_lot', 'lot_key', 'lot_status', 'date_assignment_lot', 'date_return', 'date_departure',
+            'id_record_info', 'date_assignment_prev', 'date_entry_digital', 'date_entry_physical', 'seal_number', 'observation',
+            'date_close', 'assigned', 'id_lot', 'lot_key', 'lot_status', 'date_assignment_audit', 'date_return', 'date_departure',
             'receipt_short', 'record_name'
         )
-        return apply_filters(request, base_queryset)
+        data = execute_query_with_filters(request, base_queryset)
+        return JsonResponse({'success': True, 'data': data})
     except Exception as e:
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
@@ -88,7 +96,7 @@ def get_records_audit(request):
             business_name=F('id_provider__business_name'),
             business_location=F('id_provider__business_location'),
             id_coordinator=F('id_provider__id_coordinator'),
-            date_asignment=F('recordinfo__id_lot__date_asignment'),
+            date_asignment=ToChar(F('recordinfo__id_lot__date_asignment')),
             observation=F('recordinfo__observation'),
             id_user=F('recordinfo__id_lot__id_user')
         ).filter(
@@ -99,7 +107,8 @@ def get_records_audit(request):
             'date_asignment', 'observation', 'id_user'
         )
 
-        return apply_filters(request, base_queryset)
+        data = execute_query_with_filters(request, base_queryset)
+        return JsonResponse({'success': True, 'data': data})
     except Exception as e:
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
@@ -108,31 +117,12 @@ def get_records_audit(request):
 @api_view(['GET'])
 def get_records_info(request):
     try:
-        id_lot = request.GET.dict()['id_lot']
-        base_queryset = RecordInfo.objects.select_related(
-            'id_record__id_provider',
-            'id_record__id_record_type',
-            'id_record__id_receipt_type',
-        ).annotate(
-            record_key=F('id_record__record_key'),
-            id_provider=F('id_record__id_provider__id_provider'),
-            business_name=F('id_record__id_provider__business_name'),
-            lot_user=F('id_auditor__user_name'),
-            id_coordinator=F('id_record__id_provider__id_coordinator'),
-            record_total=F('id_record__record_total'),
-            lot_key=F('id_lot__lot_key'),
-            receipt_short=F('id_record__id_receipt_type__receipt_short'),
-            record_name=F('id_record__id_record_type__record_name')
-        ).filter(
-            id_lot=id_lot
-        ).values(
-            'id_record', 'record_key', 'assigned', 'id_provider', 'business_name', 'id_lot',
-            'lot_user', 'id_coordinator', 'record_total', 'date_entry_digital',
-            'date_entry_physical', 'seal_number', 'observation', 'lot_key',
-            'receipt_short', 'record_name'
-        )
-
-        return apply_filters(request, base_queryset)
+        id_lot = None
+        if 'id_lot' in request.GET.dict():
+            id_lot = request.GET.dict()['id_lot']
+        base_queryset = get_records_from_lot(id_lot=id_lot)
+        data = execute_query_with_filters(request, base_queryset)
+        return JsonResponse({'success': True, 'data': data})
 
     except Exception as e:
         print(e)
@@ -145,100 +135,78 @@ def get_user_records(request):
         token = request.GET.dict()['token']
         validated_token = RefreshToken(token)
         id_user = int(validated_token.payload['user_id'])
-        base_queryset = RecordsInfoUsers.objects.select_related(
-            'id_record_info__id_record',
-            'id_record_info__id_record__id_provider',
-            'id_record_info__id_record__id_record_type',
-            'id_record_info__id_lot',
-            'id_record_info__id_record__id_provider__id_particularity',
-            'id_record_info__id_auditor'
-        ).annotate(
-            record_key=F('id_record_info__id_record__record_key'),
-            uxri_id=F('id'),
-            assigned=F('id_record_info__assigned'),
-            id_provider=F(
-                'id_record_info__id_record__id_provider__id_provider'),
-            business_name=F(
-                'id_record_info__id_record__id_provider__business_name'),
-            record_name=F(
-                'id_record_info__id_record__id_record_type__record_name'),
-            id_lot=F('id_record_info__id_lot__id'),
-            id_auditor=F('id_record_info__id_auditor'),
-            auditor=F('id_record_info__id_auditor__user_name'),
-            priority=F('id_record_info__id_record__id_provider__priority'),
-            id_coordinator=F(
-                'id_record_info__id_record__id_provider__id_coordinator'),
-            record_total=F('id_record_info__id_record__record_total'),
-            date_entry_digital=F('id_record_info__date_entry_digital'),
-            date_entry_physical=F('id_record_info__date_entry_physical'),
-            seal_number=F('id_record_info__seal_number'),
-            observation=F('id_record_info__observation'),
-            lot_key=F('id_record_info__id_lot__lot_key'),
-            part_prevencion=Case(
-                When(id_record_info__id_record__id_provider__id_particularity__part_prevencion__isnull=False, then=Value(True)),
-                default=Value(False),
-                output_field=BooleanField()
-            ),
-            part_g_salud=Case(
-                When(
-                    id_record_info__id_record__id_provider__id_particularity__part_g_salud__isnull=False, then=Value(True)),
-                default=Value(False),
-                output_field=BooleanField()
-            )
-        ).filter(
-            id_user=id_user
-        ).values(
-            'id', 'record_key', 'uxri_id', 'worked_on', 'assigned', 'id_provider', 'business_name',
-            'record_name', 'id_lot', 'id_auditor', 'auditor', 'priority', 'id_coordinator', 'record_total',
-            'date_entry_digital', 'date_entry_physical', 'seal_number', 'observation',
-            'lot_key', 'part_prevencion', 'part_g_salud'
-        )
-        return apply_filters(request, base_queryset)
-
+        base_queryset = get_filtered_user_records(id_user)
+        data = execute_query_with_filters(request, base_queryset)
+        return JsonResponse({'success': True, 'data': data})
     except Exception as e:
-        print(e)
+        tb = traceback.extract_tb(e.__traceback__)
+        error_line = tb[-1][1]  # Get the line number of the last frame
+        print(f"Exception occurred on line {error_line}: {e}")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
 @api_view(['POST'])
 def add_record_to_user(request):
     try:
-        warning = ''
         token = request.data['token']
         validated_token = RefreshToken(token)
-        record_key = request.data['record_key'],
+        records = request.data['records']
         id_user = int(validated_token.payload['user_id'])
 
-        if record_key is None:
-            return JsonResponse({'success': False, 'error': 'El id no existe'})
-
-        # BUG
-        record_key = record_key[0]
-        # Check if the record exists
-        record_instance = Record.objects.filter(record_key=str(record_key))
-        if not record_instance.exists():
-            return JsonResponse({'success': False, 'error': 'El expediente no existe'})
-
-        record_info_instance = RecordInfo.objects.filter(
-            id_record=record_instance.first().pk)
-        if not record_info_instance.exists():
-            res = createRecordInfo(record_instance.first().pk)
-            if res:
-                warning = '- El expediente no estaba asignado'
-            else:
-                return JsonResponse({'success': False, 'error': 'El expediente no existe'})
+        if not records:
+            return JsonResponse({'success': False, 'error': 'No record keys provided'})
 
         user_instance = User.objects.filter(id=id_user).first()
-        record_info_id = record_info_instance.first().pk
+        if not user_instance:
+            return JsonResponse({'success': False, 'error': 'User not found'})
 
-        record_user_exists = RecordsInfoUsers.objects.filter(
-            id_record_info=record_info_id, id_user=id_user).exists()
-        if not record_user_exists:
-            RecordsInfoUsers.objects.create(id_record_info=record_info_instance.first(
-            ), id_user=user_instance, worked_on=False)
-            return JsonResponse({'success': True, 'message': 'Nuevo Expediente ' + warning})
-        else:
-            return JsonResponse({'success': False, 'error': 'Expediente ya en la Tabla'})
+        added_records = []
+        errors = []
+
+        for record_obj in records:
+            record_key = record_obj['value']
+            # Check if the record exists
+            record_instance = Record.objects.filter(
+                record_key=str(record_key)).first()
+            if not record_instance:
+                errors.append(f"Record with key {record_key} does not exist")
+                continue
+
+            record_info_instance = RecordInfo.objects.filter(
+                id_record=record_instance.pk).first()
+            if not record_info_instance:
+                res = create_record_info(record_instance.pk)
+                if res:
+                    record_info_instance = RecordInfo.objects.filter(
+                        id_record=record_instance.pk).first()
+                else:
+                    errors.append(
+                        f"Failed to create record info for {record_key}")
+                    continue
+
+            record_user_exists = RecordsInfoUsers.objects.filter(
+                id_record_info=record_info_instance.pk, id_user=id_user).exists()
+
+            if not record_user_exists:
+                RecordsInfoUsers.objects.create(
+                    id_record_info=record_info_instance,
+                    id_user=user_instance,
+                    worked_on=False
+                )
+                added_records.append(record_key)
+            else:
+                errors.append(f"Record {record_key} already in the table")
+
+        base_query_set = get_filtered_user_records(id_user, added_records)
+        query_result = execute_query(base_query_set)
+
+        response = {
+            'success': True,
+            'added_records': query_result,
+            'errors': errors,
+        }
+
+        return JsonResponse(response)
 
     except Exception as e:
         print(e)
@@ -246,54 +214,145 @@ def add_record_to_user(request):
 
 
 @api_view(['PUT'])
-def update_record_to_user(request):
+def update_records_to_user(request):
     try:
-        request_dict = request.data
-        token = request_dict['token']
+        token = request.data['token']
         validated_token = RefreshToken(token)
-        new_record_key = request_dict['new_record_key']
-        old_record_key = request_dict['old_record_key'],
-
-        # BUG
-        old_record_key = old_record_key[0]
         id_user = int(validated_token.payload['user_id'])
+        records_to_update = request.data['records']  # This should be an array of objects
 
-        # Check if the new record exists
-        new_record_instance = Record.objects.filter(
-            record_key=str(new_record_key))
-        if not new_record_instance.exists():
-            return JsonResponse({'success': False, 'error': 'El expediente no existe'})
+        updated_record_keys = []
+        errors = []
+        
+        with transaction.atomic():
+            for record in records_to_update:
+                new_record_key = record['new_record_key']
+                old_record_key = record['old_record_key']
 
-        new_record_info_instance = RecordInfo.objects.filter(
-            id_record=new_record_instance.first().pk)
-        if not new_record_info_instance.exists():
-            res = createRecordInfo(new_record_instance.first().pk)
-            if res:
-                warning = '- El expediente no estaba asignado'
-            else:
-                return JsonResponse({'success': False, 'error': 'El expediente no existe'})
+                # Check if the new record exists
+                new_record_instance = Record.objects.filter(record_key=str(new_record_key)).first()
+                if not new_record_instance:
+                    errors.append(f'El expediente {new_record_key} no existe')
+                    continue
 
-        # Check already active on use
-        if (RecordsInfoUsers.objects.filter(id_record_info=new_record_info_instance.first().pk, id_user=id_user).exists()):
-            return JsonResponse({'success': False, 'error': 'Ya Expediente ya en la Tabla'})
+                new_record_info_instance = RecordInfo.objects.filter(id_record=new_record_instance.pk).first()
+                if not new_record_info_instance:
+                    res = create_record_info(new_record_instance.pk)
+                    if not res:
+                        errors.append(f'No se pudo crear RecordInfo para {new_record_key}')
+                        continue
+                    new_record_info_instance = RecordInfo.objects.get(id_record=new_record_instance.pk)
 
-        old_record_instance = Record.objects.filter(
-            record_key=str(old_record_key))
-        if not old_record_instance.exists():
-            return JsonResponse({'success': False, 'error': 'El viejo expediente no existe'})
-        id_old_record_info = RecordInfo.objects.filter(
-            id_record=old_record_instance.first().pk).first().pk
+                # Check if already active in use
+                if RecordsInfoUsers.objects.filter(id_record_info=new_record_info_instance.pk, id_user=id_user).exists():
+                    errors.append(f'El expediente {new_record_key} ya está en la Tabla')
+                    continue
 
-        old_Records_Info_Users_instance = RecordsInfoUsers.objects.filter(
-            id_record_info=id_old_record_info, id_user=id_user).first()
-        old_Records_Info_Users_instance.id_record_info = new_record_info_instance.first()
-        old_Records_Info_Users_instance.save()
+                old_record_instance = Record.objects.filter(record_key=str(old_record_key)).first()
+                if not old_record_instance:
+                    errors.append(f'El viejo expediente {old_record_key} no existe')
+                    continue
 
-        return JsonResponse({'success': True, 'message': 'Actualizado Expediente'})
+                id_old_record_info = RecordInfo.objects.filter(id_record=old_record_instance.pk).first().pk
+                old_Records_Info_Users_instance = RecordsInfoUsers.objects.filter(
+                    id_record_info=id_old_record_info, id_user=id_user).first()
+
+                if old_Records_Info_Users_instance:
+                    old_Records_Info_Users_instance.id_record_info = new_record_info_instance
+                    old_Records_Info_Users_instance.save()
+                    updated_record_keys.append(new_record_key)
+                else:
+                    errors.append(f'No se encontró RecordsInfoUsers para {old_record_key}')
+
+        base_query_set = get_filtered_user_records(id_user, updated_record_keys)
+        query_result = execute_query(base_query_set)
+
+        response = {
+            'success': True,
+            'modified_records': query_result,
+            'errors': errors,
+        }
+        return JsonResponse(response)
 
     except Exception as e:
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@api_view(['DELETE'])
+def remove_record_user(request):
+    try:
+        token = request.data['token']
+        validated_token = RefreshToken(token)
+        records = request.data['records']
+        id_user = int(validated_token.payload['user_id'])
+
+        success_count = 0
+        failed_count = 0
+        failed_records = []
+
+        for record_obj in records:
+            record_key = record_obj['value']
+            record_instance = Record.objects.filter(
+                record_key=record_key).first()
+            if not record_instance:
+                failed_count += 1
+                failed_records.append(record_key)
+                continue
+
+            record_info_instance = RecordInfo.objects.filter(
+                id_record=record_instance.pk).first()
+            if not record_info_instance:
+                failed_count += 1
+                failed_records.append(record_key)
+                continue
+
+            record_info_x_user_instance = RecordsInfoUsers.objects.filter(
+                id_record_info=record_info_instance.pk, id_user=id_user
+            ).first()
+
+            if not record_info_x_user_instance:
+                failed_count += 1
+                failed_records.append(record_key)
+                continue
+
+            if remove_record_from_user(record_info_x_user_instance.pk):
+                success_count += 1
+            else:
+                failed_count += 1
+                failed_records.append(record_key)
+
+        response = {
+            'success': success_count > 0,
+            'message': f'{success_count} expediente(s) desasignado(s) exitosamente',
+            'failed_count': failed_count,
+            'failed_records': failed_records
+        }
+
+        if failed_count > 0:
+            response['error'] = f'No se pudieron desasignar {failed_count} expediente(s)'
+
+        return JsonResponse(response)
+
+    except Exception as e:
+        print(e)
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+def update_record_info(record_info_instance, record_info):
+    for field in ['date_entry_digital', 'date_entry_physical', 'seal_number', 'observation']:
+        if field in record_info:
+            value = record_info[field]
+            if 'date' in field:
+                # Convert date from 'day/month/year' to 'YYYY-MM-DD'
+                value = parse_date(value)
+            setattr(record_info_instance, field, value)
+
+    if 'lot_key' in record_info and record_info['lot_key'] is not None:
+        lot_instance = get_lot_from_key(record_info['lot_key'])
+        record_info_instance.id_lot = lot_instance
+
+    record_info_instance.save()
 
 
 @api_view(['PUT'])
@@ -307,65 +366,66 @@ def save_record_to_user(request):
     Returns:
         A JSON response indicating success or failure.
     """
-    with transaction.atomic():
-            requestDict = request.data
-            values_to_save = requestDict['values']
+    try:
+        request_data = request.data
+        token = request_data.get('token')
+        if not token:
+            return JsonResponse({'success': False, 'error': 'Token is missing'}, status=400)
 
+        validated_token = RefreshToken(token)
+        user_id = int(validated_token.payload['user_id'])
+
+        values_to_save = request_data.get('values')
+        if not values_to_save:
+            return JsonResponse({'success': False, 'error': 'No values to save'}, status=400)
+
+        with transaction.atomic():
             for id_record_info, record_info in values_to_save.items():
                 uxri_instance = RecordsInfoUsers.objects.filter(
                     id=record_info['uxri_id']).first()
                 if uxri_instance is None:
                     return JsonResponse({'success': False, 'error': f'UXRI instance with id {record_info["uxri_id"]} not found.'}, status=400)
+
                 uxri_instance.worked_on = False
                 uxri_instance.save()
 
-                record_info_instance = RecordInfo.objects.filter(id=uxri_instance.id_record_info.pk).first()
+                record_info_instance = RecordInfo.objects.filter(
+                    id=uxri_instance.id_record_info.pk).first()
                 if record_info_instance is None:
                     return JsonResponse({'success': False, 'error': f'RecordInfo instance with id {id_record_info} not found.'}, status=400)
 
-                for field in ['date_entry_digital', 'date_entry_physical', 'seal_number', 'observation']:
-                    if field in record_info:
-                        setattr(record_info_instance,
-                                field, record_info[field])
+                update_record_info(record_info_instance, record_info)
 
-                if 'lot_key' in record_info and record_info['lot_key'] is not None:
-                    lot_instance = get_lot_from_key(record_info['lot_key'])
-                    record_info_instance.id_lot = lot_instance
+        return JsonResponse({'success': True, 'message': 'Guardados Cambios Expediente'})
 
-                record_info_instance.save()
-
-    return JsonResponse({'success': True, 'message': 'Guardados Cambios Expediente'})
-
-
-
-@api_view(['PUT'])
-def remove_record_user(request):
-    try:
-        request_dict = request.data
-        token = request_dict['token']
-        validated_token = RefreshToken(token)
-        record_key = request_dict['record_key'],
-        id_user = int(validated_token.payload['user_id'])
-
-        # BUG
-        record_key = record_key[0]
-
-        record_instance = Record.objects.filter(record_key=record_key).first()
-        record_info_instance = RecordInfo.objects.filter(
-            id_record=record_instance.pk)
-        if not record_info_instance.exists():
-            return JsonResponse({'success': False, 'error': 'El expediente no existe'})
-
-        record_info_x_user_instance = RecordsInfoUsers.objects.filter(
-            id_record_info=record_info_instance.first().pk, id_user=id_user)
-        if not record_info_x_user_instance.exists():
-            return JsonResponse({'success': False, 'error': 'Expediente no assignado'})
-
-        if removeRecordFromUser(record_info_x_user_instance.first().pk):
-            return JsonResponse({'success': True, 'message': 'Expediente desasignado'})
-        else:
-            return JsonResponse({'success': False, 'error': 'No se pudo desasignar el expediente'})
-
+    except KeyError as e:
+        return JsonResponse({'success': False, 'error': f'Missing key: {str(e)}'}, status=400)
     except Exception as e:
-        print(e)
+        return JsonResponse({'success': False, 'error': f'An error occurred: {str(e)}'}, status=500)
+
+
+@api_view(['DELETE'])
+def remove_all_assigned_records(request):
+    try:
+        # Extract the token from the request data
+        token = request.data.get('token')
+        if not token:
+            return JsonResponse({'success': False, 'error': 'Token is missing'}, status=400)
+
+        # Validate the token and extract the user ID
+        try:
+            validated_token = RefreshToken(token)
+            id_user = int(validated_token['user_id'])
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': 'Invalid token'}, status=401)
+
+        # Query and delete the records associated with the user
+        rec_objs = RecordsInfoUsers.objects.filter(id_user=id_user)
+        deleted_count, _ = rec_objs.delete()
+
+        return JsonResponse({'success': True, 'message': f'{deleted_count} records unassigned'}, status=200)
+    except Exception as e:
+        tb = traceback.extract_tb(e.__traceback__)
+        error_line = tb[-1][1]  # Get the line number of the last frame
+        print(f"Exception occurred on line {error_line}: {e}")
         return JsonResponse({'success': False, 'error': str(e)})

@@ -98,11 +98,11 @@ class Provider(models.Model):
 
 class Lot(models.Model):
     objects = BulkUpdateOrCreateQuerySet.as_manager()
-    lot_key = models.CharField(max_length=80)
+    lot_key = models.CharField(max_length=80, unique=True)
     status = models.BooleanField()
-    date_asignment = models.DateField(blank=True, null=True)
     date_return = models.DateField(blank=True, null=True)
     date_departure = models.DateField(blank=True, null=True)
+    observation = models.TextField(blank=True, null=True)
 
     class Meta:
         db_table = 'lots'
@@ -195,12 +195,13 @@ class Record(models.Model):
 class RecordInfo(models.Model):
     objects = BulkUpdateOrCreateQuerySet.as_manager()
     id_record = models.OneToOneField(
-        Record, models.DO_NOTHING, db_column='id_record',unique=True)
+        Record, models.DO_NOTHING, db_column='id_record', unique=True)
     id_auditor = models.ForeignKey(
         User, models.DO_NOTHING, db_column='id_auditor', blank=True, null=True)
     id_lot = models.ForeignKey(
         Lot, models.DO_NOTHING, db_column='id_lot', blank=True, null=True)
-    date_assignment = models.DateField(blank=True, null=True)
+    date_assignment_audit = models.DateField(blank=True, null=True)
+    date_assignment_prev = models.DateField(blank=True, null=True)
     date_entry_digital = models.DateField(blank=True, null=True)
     date_entry_physical = models.DateField(blank=True, null=True)
     seal_number = models.CharField(
@@ -236,6 +237,19 @@ class Feedback(models.Model):
     class Meta:
         db_table = 'feedback'  # Explicitly define table name (optional)
         ordering = ['priority']  # Order bugs by priority by default
+
+    def __str__(self):
+        return self.title
+
+
+class Report(models.Model):
+    title = models.CharField(max_length=70, null=False)
+    headers = models.TextField(blank=True, null=True)
+    description = models.TextField(null=False)
+    function = models.SmallIntegerField(null=True)
+
+    class Meta:
+        db_table = 'reports'  # Explicitly define table name (optional)
 
     def __str__(self):
         return self.title

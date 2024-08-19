@@ -99,7 +99,8 @@ def post_lots(request):
                 record = Record(
                     record_key=record_key,
                     id_provider=provider,
-                    id_record_type=record_type
+                    id_record_type=record_type,
+                    record_total = row[config_data['record_total']]
                 )
                 if record_key not in existing_key_records:
                     new_records.append(record)
@@ -109,8 +110,8 @@ def post_lots(request):
                     id_record=record,
                     id_lot=lot,
                     id_auditor=auditor,
-                    date_assignment=handle_date_DMY(
-                        row[config_data['date_assignment']]),
+                    date_assignment_audit=handle_date_DMY(
+                        row[config_data['date_assignment_audit']]),
                     date_entry_digital=handle_date_DMY(
                         row[config_data['date_entry_digital']]),
                     date_entry_physical=handle_date_DMY(
@@ -261,12 +262,12 @@ def post_assignment(request):
             record = get_record_by_key(record_key=record_key)
 
             cases.append(RecordInfo(id_record=record,
-                                    date_assignment=handle_date_DMY(
-                                        row[config_data['date_assignment']]),
+                                    date_assignment_prev=handle_date_DMY(
+                                        row[config_data['date_assignment_prev']]),
                                     assigned=True))
 
         insert_update_bulk_records_info(
-            cases, ['id_record', 'date_assignment', 'assigned'], 'id_record')
+            cases, ['id_record', 'date_assignment_prev', 'assigned'], 'id_record')
         end = time.time()
         print('Elapsed Time for assignment: ', end - start)
         update_date_config(4)

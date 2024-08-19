@@ -5,6 +5,9 @@ from django.db import transaction
 from gsalud.models import RecordInfo, RecordsInfoUsers, Record
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.core.exceptions import ValidationError
+from django.db.models import F,Q
+from gsalud.utils.manage_date import ToChar
+
 
 
 def insert_update_bulk_records_info(records_info, list_fields, match_field):
@@ -28,18 +31,20 @@ def update_single_case(new_case_instance, force=False):
         with transaction.atomic():
             id_record = new_case_instance.id_record
             old_case_instance = RecordInfo.objects.select_for_update().get(id_record=id_record)
-            
+
             # Get all field names for the model
-            fields = [field.name for field in RecordInfo._meta.fields if field.name != 'id']
-            
+            fields = [
+                field.name for field in RecordInfo._meta.fields if field.name != 'id']
+
             # Update each field individually
             for field in fields:
-                setattr(old_case_instance, field, getattr(new_case_instance, field))
-            
+                setattr(old_case_instance, field,
+                        getattr(new_case_instance, field))
+
             # Validate the model before saving
             old_case_instance.full_clean()
             old_case_instance.save()
-            
+
             return True, f"Updated record {old_case_instance.pk}"
     except RecordInfo.DoesNotExist:
         return False, f"Record with id {id_record} does not exist."
@@ -117,7 +122,7 @@ def updateRecordsCases(updateRecordsInfoIds: List[int], updateRecordsInfoData: L
                 print("Error in serializer validation:", serializer.errors)
 
 
-def removeRecordFromUser(id_uxri: int) -> bool:
+def remove_record_from_user(id_uxri: int) -> bool:
     """
     Removes a record from a user in the database.
 
@@ -137,7 +142,7 @@ def removeRecordFromUser(id_uxri: int) -> bool:
     return True
 
 
-def createRecordInfo(id_record: int) -> bool:
+def create_record_info(id_record: int) -> bool:
     """
     Creates a new record information data dictionary with the given id_record and assigned set to False.
     Inserts the new record information data into the database using the insertRecordsCases function.
@@ -163,3 +168,43 @@ def createRecordInfo(id_record: int) -> bool:
         else:
             print("Error in serializer validation:", serializer.errors)
             return False
+
+
+def get_records_from_lot(id_lot):
+    try:
+        base_queryset = RecordInfo.objects.annotate(
+            record_key=F('id_record__record_key'),
+            id_provider=F('id_record__id_provider__id_provider'),
+            business_name=F('id_record__id_provider__business_name'),
+            id_coordinator=F('id_record__id_provider__id_coordinator'),
+            record_total=F('id_record__record_total'),
+            lot_key=F('id_lot__lot_key'),
+            receipt_short=F('id_record__id_receipt_type__receipt_short'),
+            record_name=F('id_record__id_record_type__record_name'),
+            date_entry_digital_formatted=ToChar('date_entry_digital'),
+            date_entry_physical_formatted=ToChar('date_entry_physical'),
+            date_assignment_audit_formatted=ToChar('date_assignment_audit')
+        )
+
+        if id_lot is None:
+            # Query for unassigned records
+            base_queryset = base_queryset.filter(
+                id_lot__isnull=True
+            ).filter(
+                Q(date_entry_digital__isnull=False) |
+                Q(date_entry_physical__isnull=False) |
+                Q(seal_number__isnull=False)
+            )
+        else:
+            # Query for records in the specified lot
+            base_queryset = base_queryset.filter(id_lot=id_lot)
+
+        return base_queryset.values(
+            'id_record', 'record_key', 'assigned', 'id_provider', 'business_name', 'id_lot',
+            'id_auditor', 'id_coordinator', 'record_total', 'date_entry_digital_formatted','date_assignment_audit_formatted',
+            'date_entry_physical_formatted', 'seal_number', 'observation', 'lot_key',
+            'receipt_short', 'record_name'
+        )
+    except Exception as e:
+        print(e)
+        return None

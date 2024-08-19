@@ -27,4 +27,5 @@ urlpatterns = [
     path('lots/', include('gsalud.paths.lot_urls')),
     path('roles/', include('gsalud.paths.role_urls')),
     path('feedback/', include('gsalud.paths.feedback_urls')),
+    path('reports/', include('gsalud.paths.reports_urls')),
 ]

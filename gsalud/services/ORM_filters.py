@@ -1,3 +1,4 @@
+from typing import List
 from django.http import JsonResponse
 from django.db import connection
 from django.db.models import Q
@@ -36,41 +37,51 @@ filters = [
         'icon': 'material-symbols-light:brightness-empty-outline'},
 ]
 
+
 def generate_order_by(column_name, is_asc=True):
     order = column_name if is_asc else f'-{column_name}'
     return ['Order', order]
+
 
 def generate_equal_or_not_equal_filter(column_name, val, is_equal=True):
     operator = '' if is_equal else '__ne'
     return ['Where', Q(**{f'{column_name}{operator}': val})]
 
+
 def generate_comparison_filter(column_name, val, operator):
     return ['Where', Q(**{f'{column_name}__{operator}': val})]
+
 
 def generate_empty_filter(column_name):
     return ['Where', Q(**{f'{column_name}__isnull': True})]
 
+
 def generate_exists_filter(column_name):
     return ['Where', Q(**{f'{column_name}__isnull': False})]
+
 
 def generate_false_filter(column_name):
     return ['Where', Q(**{column_name: False})]
 
+
 def generate_true_filter(column_name):
     return ['Where', Q(**{column_name: True})]
+
 
 def generate_text_contains_filter(column_name, value):
     return ['Where', Q(**{f'{column_name}__icontains': value})]
 
+
 def generate_text_not_contains_filter(column_name, value):
     return ['Where', ~Q(**{f'{column_name}__icontains': value})]
+
 
 def generate_text_starts_with_filter(column_name, value):
     return ['Where', Q(**{f'{column_name}__istartswith': value})]
 
+
 def generate_text_ends_with_filter(column_name, value):
     return ['Where', Q(**{f'{column_name}__iendswith': value})]
-
 
 
 sql_generators = {
@@ -93,7 +104,7 @@ sql_generators = {
 }
 
 
-def apply_filters(request, base_queryset, group_by=None):
+def execute_query_with_filters(request, base_queryset, extra_values=None):
     try:
         with connection.cursor() as cursor:
             dataString = request.GET.dict()['filters']
@@ -105,7 +116,8 @@ def apply_filters(request, base_queryset, group_by=None):
             for filter in filters:
                 sql_generator = sql_generators.get(filter['funct'])
                 if sql_generator:
-                    group, condition = sql_generator(filter['col'], filter['val'])
+                    group, condition = sql_generator(
+                        filter['col'], filter['val'])
                     if group == 'Where':
                         where_filters &= condition
                     elif group == 'Order':
@@ -124,12 +136,33 @@ def apply_filters(request, base_queryset, group_by=None):
             query_set = query_set[:10000]
 
             # Convert the QuerySet to a list
-            query_list = list(query_set)
+            if extra_values:
+                query_list = list(query_set) + extra_values
+            else: 
+                query_list = list(query_set)
 
             # Return the list as a JsonResponse
-            return JsonResponse({'success': True,'data':query_list}, safe=False)
-        
+            return query_list
+
     except Exception as e:
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
-            
+
+
+def execute_query(base_queryset, group_by=None):
+    try:
+        with connection.cursor() as cursor:
+            query_set = base_queryset
+
+            # Limit the number of rows
+            query_set = query_set[:10000]
+
+            # Convert the QuerySet to a list
+            query_list = list(query_set)
+
+            # Return the list as a JsonResponse
+            return  query_list
+
+    except Exception as e:
+        print(e)
+        return JsonResponse({'success': False, 'error': str(e)})

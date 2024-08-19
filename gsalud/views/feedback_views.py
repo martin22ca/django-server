@@ -4,7 +4,7 @@ from gsalud.serializers import FeedbackSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from gsalud.models import Feedback
-from gsalud.services.ORM_filters import apply_filters
+from gsalud.services.ORM_filters import execute_query_with_filters
 from datetime import datetime
 
 
@@ -12,7 +12,8 @@ from datetime import datetime
 def get_feeback(request):
     try:
         base_queryset = Feedback.objects.all().values()
-        return apply_filters(request, base_queryset)
+        data = execute_query_with_filters(request, base_queryset)
+        return JsonResponse({'success': True, 'data': data})
 
     except Exception as e:
         print(e)

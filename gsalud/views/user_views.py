@@ -2,17 +2,18 @@ from django.http import JsonResponse
 from passlib.hash import bcrypt
 from gsalud.models import User, Role
 from gsalud.serializers import UsersSerializer
-from gsalud.services.filterTable import get_table_data
+from gsalud.services.ORM_filters import execute_query_with_filters
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from gsalud.services.auth_service import is_auth
 
 
 def getUsers(request):
     try:
         base_query = 'SELECT * FROM users'
-        return get_table_data(request, base_query)
+        data = execute_query_with_filters(request, base_query)
+        return JsonResponse({'success': True, 'data': data})
+    
 
     except Exception as e:
         print(e)
