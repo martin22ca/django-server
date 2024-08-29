@@ -34,7 +34,7 @@ def update_providers(update_providers_data):
         print('Provedores Actualizados')
 
 
-def registerParticularity(particularity):
+def register_particularity(particularity):
     with transaction.atomic():
         date = datetime.today().date()
         serializer = ParticularitiesSerializer(
@@ -49,7 +49,7 @@ def registerParticularity(particularity):
             print(serializer.errors)
 
 
-def updateParticularity(particularity, id_provider):
+def update_particularity(particularity, id_provider):
     try:
         with transaction.atomic():
             date = datetime.today().date()
@@ -63,7 +63,7 @@ def updateParticularity(particularity, id_provider):
                 particularity_instance.save()
             else:
                 # Provider doesn't have a particularity, create a new one
-                new_particularity = registerParticularity(particularity)
+                new_particularity = register_particularity(particularity)
                 provider_instance.id_particularity = new_particularity
                 provider_instance.save()
 

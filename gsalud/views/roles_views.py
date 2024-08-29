@@ -5,10 +5,10 @@ from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from django.db import connection
-from gsalud.models import Role,User
+from gsalud.models import Role, User
 from gsalud.serializers import RolesSerializer
+from gsalud.services.users_service import update_users_role
 from rest_framework_simplejwt.tokens import RefreshToken
-
 
 
 @api_view(['GET'])
@@ -31,7 +31,8 @@ def getRoles(request: Any) -> JsonResponse:
             return JsonResponse({'error': 'Method not allowed'}, status=405)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
-    
+
+
 @api_view(['GET'])
 def get_role_user(request: Any) -> JsonResponse:
     try:
@@ -42,7 +43,7 @@ def get_role_user(request: Any) -> JsonResponse:
 
             user_instance = User.objects.get(pk=user_id)
             role_instance = user_instance.id_role
-            
+
             serializer = RolesSerializer(role_instance)
             return JsonResponse({'success': True, 'data': serializer.data}, safe=False)
         else:
@@ -51,17 +52,16 @@ def get_role_user(request: Any) -> JsonResponse:
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-
 @api_view(['PUT'])
-def updateRole(request):
+def update_role(request):
     try:
         data = request.data
         id_role = data.get('id_role')
-        print(data)
-        
+        id_users = data.get('id_users')
+
         if not id_role:
             return JsonResponse({'success': False, 'error': 'id_role is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Try to retrieve the role instance
         try:
             role_instance = Role.objects.get(id=id_role)
@@ -70,14 +70,15 @@ def updateRole(request):
 
         # Prepare the data for the update
         excluded_keys = ['id_role']
-        data = {key: value for key, value in data.items() if key not in excluded_keys}
-        print(data)
-
+        data = {key: value for key,
+                value in data.items() if key not in excluded_keys}
 
         # Update the role instance using the serializer
         serializer = RolesSerializer(role_instance, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            if id_users:
+                success, message = update_users_role(id_users, id_role)
             return JsonResponse({'success': True, 'message': 'ok'}, safe=False)
         else:
             return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

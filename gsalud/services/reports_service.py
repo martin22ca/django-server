@@ -39,7 +39,6 @@ def get_records_received():
             Q(date_entry_physical__isnull=False) &
             Q(seal_number__isnull=False)
         )
-        print(base_queryset.count())
 
         return base_queryset.values(
             'id_record', 'record_key', 'priority_case','id_provider', 'business_name',

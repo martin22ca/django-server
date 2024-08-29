@@ -33,6 +33,8 @@ def parse_date(date_str):
     Convert a date string from 'day/month/year' format to 'YYYY-MM-DD' format.
     """
     try:
+        if date_str == None:
+            return None
         # Convert the date string to a datetime object
         parsed_date = datetime.strptime(date_str, '%d/%m/%Y')
         # Return the date in 'YYYY-MM-DD' format

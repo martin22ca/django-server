@@ -169,7 +169,7 @@ def add_record_to_user(request):
             record_instance = Record.objects.filter(
                 record_key=str(record_key)).first()
             if not record_instance:
-                errors.append(f"Record with key {record_key} does not exist")
+                errors.append(record_key)
                 continue
 
             record_info_instance = RecordInfo.objects.filter(
@@ -180,8 +180,7 @@ def add_record_to_user(request):
                     record_info_instance = RecordInfo.objects.filter(
                         id_record=record_instance.pk).first()
                 else:
-                    errors.append(
-                        f"Failed to create record info for {record_key}")
+                    errors.append(record_key)
                     continue
 
             record_user_exists = RecordsInfoUsers.objects.filter(
@@ -195,10 +194,13 @@ def add_record_to_user(request):
                 )
                 added_records.append(record_key)
             else:
-                errors.append(f"Record {record_key} already in the table")
+                errors.append(record_key)
 
-        base_query_set = get_filtered_user_records(id_user, added_records)
-        query_result = execute_query(base_query_set)
+        if added_records.__len__() > 0:
+            base_query_set = get_filtered_user_records(id_user, added_records)
+            query_result = execute_query(base_query_set)
+        else:
+            query_result = []
 
         response = {
             'success': True,
@@ -219,41 +221,47 @@ def update_records_to_user(request):
         token = request.data['token']
         validated_token = RefreshToken(token)
         id_user = int(validated_token.payload['user_id'])
-        records_to_update = request.data['records']  # This should be an array of objects
+        # This should be an array of objects
+        records_to_update = request.data['records']
 
         updated_record_keys = []
         errors = []
-        
+
         with transaction.atomic():
             for record in records_to_update:
                 new_record_key = record['new_record_key']
                 old_record_key = record['old_record_key']
 
                 # Check if the new record exists
-                new_record_instance = Record.objects.filter(record_key=str(new_record_key)).first()
+                new_record_instance = Record.objects.filter(
+                    record_key=str(new_record_key)).first()
                 if not new_record_instance:
-                    errors.append(f'El expediente {new_record_key} no existe')
+                    errors.append(new_record_key)
                     continue
 
-                new_record_info_instance = RecordInfo.objects.filter(id_record=new_record_instance.pk).first()
+                new_record_info_instance = RecordInfo.objects.filter(
+                    id_record=new_record_instance.pk).first()
                 if not new_record_info_instance:
                     res = create_record_info(new_record_instance.pk)
                     if not res:
-                        errors.append(f'No se pudo crear RecordInfo para {new_record_key}')
+                        errors.append(new_record_key)
                         continue
-                    new_record_info_instance = RecordInfo.objects.get(id_record=new_record_instance.pk)
+                    new_record_info_instance = RecordInfo.objects.get(
+                        id_record=new_record_instance.pk)
 
                 # Check if already active in use
                 if RecordsInfoUsers.objects.filter(id_record_info=new_record_info_instance.pk, id_user=id_user).exists():
-                    errors.append(f'El expediente {new_record_key} ya está en la Tabla')
+                    errors.append(new_record_key)
                     continue
 
-                old_record_instance = Record.objects.filter(record_key=str(old_record_key)).first()
+                old_record_instance = Record.objects.filter(
+                    record_key=str(old_record_key)).first()
                 if not old_record_instance:
-                    errors.append(f'El viejo expediente {old_record_key} no existe')
+                    errors.append(new_record_key)
                     continue
 
-                id_old_record_info = RecordInfo.objects.filter(id_record=old_record_instance.pk).first().pk
+                id_old_record_info = RecordInfo.objects.filter(
+                    id_record=old_record_instance.pk).first().pk
                 old_Records_Info_Users_instance = RecordsInfoUsers.objects.filter(
                     id_record_info=id_old_record_info, id_user=id_user).first()
 
@@ -262,10 +270,15 @@ def update_records_to_user(request):
                     old_Records_Info_Users_instance.save()
                     updated_record_keys.append(new_record_key)
                 else:
-                    errors.append(f'No se encontró RecordsInfoUsers para {old_record_key}')
+                    errors.append(new_record_key)
+                    
 
-        base_query_set = get_filtered_user_records(id_user, updated_record_keys)
-        query_result = execute_query(base_query_set)
+        if updated_record_keys.__len__() > 0:
+            base_query_set = get_filtered_user_records(
+                id_user, updated_record_keys)
+            query_result = execute_query(base_query_set)
+        else:
+            query_result = []
 
         response = {
             'success': True,

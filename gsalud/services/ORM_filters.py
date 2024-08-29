@@ -133,7 +133,7 @@ def execute_query_with_filters(request, base_queryset, extra_values=None):
                 query_set = query_set.order_by(*order_by)
 
             # Limit the number of rows
-            query_set = query_set[:10000]
+            query_set = query_set[:5000]
 
             # Convert the QuerySet to a list
             if extra_values:

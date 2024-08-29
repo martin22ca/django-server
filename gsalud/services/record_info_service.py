@@ -183,7 +183,8 @@ def get_records_from_lot(id_lot):
             record_name=F('id_record__id_record_type__record_name'),
             date_entry_digital_formatted=ToChar('date_entry_digital'),
             date_entry_physical_formatted=ToChar('date_entry_physical'),
-            date_assignment_audit_formatted=ToChar('date_assignment_audit')
+            date_assignment_audit_formatted=ToChar('date_assignment_audit'),
+            user_name=F('id_auditor__user_name')
         )
 
         if id_lot is None:
@@ -200,7 +201,7 @@ def get_records_from_lot(id_lot):
             base_queryset = base_queryset.filter(id_lot=id_lot)
 
         return base_queryset.values(
-            'id_record', 'record_key', 'assigned', 'id_provider', 'business_name', 'id_lot',
+            'id_record', 'record_key', 'assigned', 'id_provider', 'business_name', 'id_lot', 'user_name',
             'id_auditor', 'id_coordinator', 'record_total', 'date_entry_digital_formatted','date_assignment_audit_formatted',
             'date_entry_physical_formatted', 'seal_number', 'observation', 'lot_key',
             'receipt_short', 'record_name'

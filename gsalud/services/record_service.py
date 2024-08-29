@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from gsalud.utils.manage_date import ToChar
 from gsalud.models import Record, RecordsInfoUsers
 from django.db import IntegrityError, transaction
-from django.db.models import F,Q, Case, When, Value, BooleanField
+from django.db.models import F,Q, Case, When, Value, BooleanField, BinaryField
 
 
 def insert_update_bulk_records(records, list_fields, match_field):
@@ -98,8 +98,8 @@ def get_filtered_user_records(id_user, record_keys=None):
             id_auditor=F('id_record_info__id_auditor'),
             auditor=F('id_record_info__id_auditor__user_name'),
             priority=Case(
-                When(id_record_info__id_record__id_provider__priority__isnull=False, then=Value(True)),
-                default=Value(False),
+                When(id_record_info__id_record__id_provider__priority__isnull=False, then=Value(1)),
+                default=Value(0),
                 output_field=BooleanField()
             ),
             id_coordinator=F(
@@ -114,14 +114,14 @@ def get_filtered_user_records(id_user, record_keys=None):
                 When(
                     Q(id_record_info__id_record__id_provider__id_particularity__part_prevencion__isnull=False) |
                     Q(id_record_info__id_record__id_provider__id_particularity__part_g_salud__isnull=False),
-                    then=Value(True)
+                    then=Value(1)
                 ),
-                default=Value(False),
-                output_field=BooleanField()
+                default=Value(0),
+                output_field=BinaryField()
             )
         ).filter(id_user=id_user)
 
-        if record_keys:
+        if record_keys :
             base_queryset = base_queryset.filter(record_key__in=record_keys)
 
         return base_queryset.values(

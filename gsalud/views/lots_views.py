@@ -1,9 +1,10 @@
 from django.http import JsonResponse
 from django.db.models import Count, Q
 from django.db import transaction
+from gsalud.utils.manage_date import parse_date
 from gsalud.services.ORM_filters import execute_query_with_filters
 from gsalud.services.users_service import get_user_by_pk
-from gsalud.services.lots_service import get_lot_from_key
+from gsalud.services.lots_service import get_lot_from_key, manage_records_from_lot
 from gsalud.models import Lot
 from gsalud.serializers import LotsSerializer
 from rest_framework.decorators import api_view
@@ -40,7 +41,8 @@ def get_lots(request):
             'total_records': unassigned_count
         }]
         # Apply filters (assuming this function exists and works with lists)
-        data = execute_query_with_filters(request, base_queryset,unassigned_lot)
+        data = execute_query_with_filters(
+            request, base_queryset, unassigned_lot)
         return JsonResponse({'success': True, 'data': data})
     except Exception as e:
         print
@@ -48,7 +50,7 @@ def get_lots(request):
 
 
 @api_view(['DELETE'])
-def popRecordFromLot(request):
+def pop_record_from_lot(request):
     try:
         # DON'T KNOW WHY I RECIVE A LIST INSTEAD OF AND OBJ HERE
         data = request.data[0]
@@ -73,6 +75,7 @@ def update_lot(request):
     try:
         with transaction.atomic():
             data = request.data
+            print(data)
             id_lot = data.get('id_lot')
             if id_lot is None:
                 return Response({'success': False, 'error': 'Lot ID is required for updating.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -83,30 +86,40 @@ def update_lot(request):
                 return Response({'success': False, 'error': 'Lot with the provided ID does not exist.'}, status=status.HTTP_404_NOT_FOUND)
 
             lot_key = data.get('lot_key')
-            user = get_user_by_pk(data.get('id_audit')) if 'id_audit' in data else None
-            date_assignment = data.get('date_assignment')
-
-            records_to_update = RecordInfo.objects.filter(id_lot=lot_instance.pk)
+            edited_records = data.get('edited_records')
+            if edited_records is not None:
+                manage_records_from_lot(lot_key, edited_records)
 
             if lot_key and lot_key != lot_instance.lot_key:
                 new_lot = get_lot_from_key(lot_key)
                 if new_lot:
+                    records_to_update = RecordInfo.objects.filter(
+                        id_lot=lot_instance.pk)
                     records_to_update.update(id_lot=new_lot)
-                    # Update the current lot to mark it as empty or inactive
-                    lot_instance.status = False  # Assuming you have such a field
+                    lot_instance.status = False
                     lot_instance.save()
                 else:
                     return Response({'success': False, 'error': 'Invalid lot_key provided.'}, status=status.HTTP_400_BAD_REQUEST)
+            # Remove None values and id_lot from data
+            update_data = {
+                'date_departure': data.get('date_departure'),
+                'date_return': data.get('date_return'),
+                'observation': data.get('observation')
+            }
+            audit = get_user_by_pk(data.get('id_auditor'))
+            records_to_update = RecordInfo.objects.filter(
+                id_lot=lot_instance.pk, id_auditor=None)
+            records_to_update.update(id_auditor=audit, date_assignment_audit=
+                data.get('date_assignment_audit'))
+            serializer = LotsSerializer(
+                lot_instance, data=update_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
             else:
-                # Remove None values and id_lot from data
-                update_data = {k: v for k, v in data.items() if v is not None and k != 'id_lot'}
-                serializer = LotsSerializer(lot_instance, data=update_data, partial=True)
-                if serializer.is_valid():
-                    serializer.save()
-                else:
-                    return Response({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({'success': True, 'message': 'Lot updated successfully'})
 
     except Exception as e:
+        print(e)
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
