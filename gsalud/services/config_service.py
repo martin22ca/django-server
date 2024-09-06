@@ -19,12 +19,12 @@ def handle_config(id, newValue):
     try:
         new_date = datetime.now()
         config_obj, created = Config.objects.get_or_create(
-            id=id, defaults={'value': newValue, 'mod_date': new_date})
+            id=id, defaults={'value': newValue})
         if not created:
             # Update existing Config
             config_obj.value = newValue
             serializer = ConfigsSerializer(
-                instance=config_obj, data={'value': newValue, 'mod_date': new_date})
+                instance=config_obj, data={'value': newValue})
             if serializer.is_valid():
                 serializer.save()
                 return True
@@ -42,9 +42,8 @@ def handle_config(id, newValue):
     # Handle other potential exceptions (e.g., database errors) here
 
 
-def update_date_config(id):
+def update_date_config(id, new_date=datetime.now()):
     try:
-        new_date = datetime.now()
         Config.objects.filter(pk=id).update(mod_date=new_date)
 
     except Config.DoesNotExist:

@@ -1,12 +1,13 @@
 import datetime
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from gsalud.services.ORM_filters import execute_query_with_filters
+from gsalud.models import Provider, Particularity
+from gsalud.services.providers_service import update_particularity_g_salud 
 from rest_framework.decorators import api_view
 from gsalud.serializers import ProvidersSerializer
 from rest_framework.response import Response
 from rest_framework import status
-from gsalud.models import Provider, Particularity
-from gsalud.services.providers_service import register_particularity
 from django.db.models import Subquery, F, OuterRef
 
 
@@ -54,31 +55,23 @@ def register_porvider(request):
 
 
 @api_view(['PUT'])
-def update_porvider(request):
+def update_provider(request):
     try:
         data = request.data
-        print(data)
         id_provider = data.get('id_provider')
-        provider_instance = Provider.objects.get(pk=id_provider)
-        part = provider_instance.id_particularity
-        if part == None:
-            part = Particularity(
-                part_g_salud=data['part_g_salud'], mod_g_salud=datetime.datetime.today().date())
-            part.save()
-            provider_instance.id_particularity = part
-        else:
-            provider_instance.id_particularity.part_g_salud = data['part_g_salud']
-            provider_instance.id_particularity.mod_g_salud = datetime.datetime.today().date()
-            provider_instance.id_particularity.save()
-        serializer = ProvidersSerializer(
-            instance=provider_instance, data=data, partial=True)
+        provider = get_object_or_404(Provider, pk=id_provider)
+
+        # Handle Particularity
+        if 'part_g_salud' in data:
+            update_particularity_g_salud(provider, data['part_g_salud'])
+
+        serializer = ProvidersSerializer(instance=provider, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({'success': True, 'data': serializer.data}, status=status.HTTP_200_OK)
         else:
-            print(serializer.errors)
             return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
-        print(e)
-        return JsonResponse({'success': False, 'error': str(e)})
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

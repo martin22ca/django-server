@@ -45,20 +45,25 @@ def string_to_obj(string_data, index_empty):
         for item in array_data
     }
 
-def file_to_df(file):
-    df = pd.read_excel(file)
-    df = df.replace({np.nan: None})
-    df['emptyCol'] = None
-    return df, df.columns.get_loc('emptyCol')
-
-
 def has_non_numeric_chars(text):
     return bool(re.search(r'[^0-9]', str(text)))
 
 
-def handle_uploaded_file(request, config_id):
+def handle_uploaded_file(request):
     uploaded_file = request.FILES['file']
-    df, id_empty = file_to_df(uploaded_file)
+
+    file_path = '/tmp/' + uploaded_file.name
+    with open(file_path, 'wb+') as destination:
+        for chunk in uploaded_file.chunks():
+            destination.write(chunk)
+
+    return file_path
+
+def get_file_from_path(file_path, config_id):
+    df = pd.read_excel(file_path)
+    df = df.replace({np.nan: None})
+    df['emptyCol'] = None
+    id_empty = df.columns.get_loc('emptyCol')
     config_data = string_to_obj(
         Config.objects.get(pk=config_id).value, id_empty)
     return df, config_data

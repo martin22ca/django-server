@@ -49,28 +49,20 @@ def register_particularity(particularity):
             print(serializer.errors)
 
 
-def update_particularity(particularity, id_provider):
-    try:
-        with transaction.atomic():
-            date = datetime.today().date()
-            provider_instance = Provider.objects.get(id_provider=id_provider)
-
-            if provider_instance.id_particularity is not None:
-                # Provider already has a particularity, updating it
-                particularity_instance = provider_instance.id_particularity
-                particularity_instance.part_prevencion = particularity
-                particularity_instance.mod_prevencion = date
-                particularity_instance.save()
-            else:
-                # Provider doesn't have a particularity, create a new one
-                new_particularity = register_particularity(particularity)
-                provider_instance.id_particularity = new_particularity
-                provider_instance.save()
-
-    except Provider.DoesNotExist:
-        print("Provider does not exist with the given ID")
-    except Particularity.DoesNotExist:
-        print("Particularity does not exist")
+def update_particularity_g_salud(provider:Provider, part_g_salud):
+    today = datetime.today().date()
+    if provider.id_particularity:
+        particularity = provider.id_particularity
+        particularity.part_g_salud = part_g_salud
+        particularity.mod_g_salud = today
+    else:
+        particularity = Particularity.objects.create(
+            part_g_salud=part_g_salud,
+            mod_g_salud=today
+        )
+        provider.id_particularity = particularity
+    particularity.save()
+    provider.save()
 
 
 def insert_update_particularity_by_provider(id_provider, new_particularity):

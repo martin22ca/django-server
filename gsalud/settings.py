@@ -1,6 +1,8 @@
 from pathlib import Path
+from dotenv import dotenv_values
 import os
 
+DEV_ENV = dotenv_values('.env')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,7 +29,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'gsalud',
     'rest_framework',
-    'channels'
+    'bulk_update_or_create',
+    'channels',
+    'background_task'
 ]
 
 MIDDLEWARE = [
