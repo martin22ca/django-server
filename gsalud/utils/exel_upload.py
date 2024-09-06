@@ -1,8 +1,11 @@
 import re
+import os
+import uuid
 import numpy as np
 import pandas as pd
 import json
 import hashlib
+from datetime import datetime
 
 from gsalud.models import Config
 
@@ -52,7 +55,16 @@ def has_non_numeric_chars(text):
 def handle_uploaded_file(request):
     uploaded_file = request.FILES['file']
 
-    file_path = '/tmp/' + uploaded_file.name
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:8]  # Use first 8 characters of UUID
+    file_extension = os.path.splitext(uploaded_file.name)[1]
+    new_filename = f"{timestamp}_{unique_id}{file_extension}"
+    
+    # Save the file to the shared volume with the new filename
+    shared_data_dir = '/app/shared_data'
+    os.makedirs(shared_data_dir, exist_ok=True)
+    file_path = os.path.join(shared_data_dir, new_filename)
+    
     with open(file_path, 'wb+') as destination:
         for chunk in uploaded_file.chunks():
             destination.write(chunk)
