@@ -1,13 +1,17 @@
 from pathlib import Path
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 import os
 
-DEV_ENV = dotenv_values('.env')
+# Load .env file
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+
+def get_env_variable(var_name):
+    return os.getenv(var_name)
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-jves0%$0#af3n87q@ww_5&n2i11t-3ljby4srnesw+=0o*e(4r'
@@ -69,14 +73,15 @@ ASGI_APPLICATION = 'gsalud.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get("POSTGRES_DB"),
-        'USER': os.environ.get("POSTGRES_USER"),
-        'PASSWORD': os.environ.get("POSTGRES_PASSWORD"),
-        'HOST': os.environ.get("POSTGRES_HOST"),
-        'PORT': os.environ.get("POSTGRES_PORT"),
+        'NAME': get_env_variable("POSTGRES_DB"),
+        'USER': get_env_variable("POSTGRES_USER"),
+        'PASSWORD': get_env_variable("POSTGRES_PASSWORD"),
+        'HOST': get_env_variable("POSTGRES_HOST"),
+        'PORT': get_env_variable("POSTGRES_PORT"),
     }
 }
 
