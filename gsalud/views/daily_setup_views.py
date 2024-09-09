@@ -15,10 +15,11 @@ def post_lots(request):
             manage_lots(file_path)
             return JsonResponse({'success': True, 'message': 'Archivo en proceso'})
         else:
-            update_date_config(5, None)
+            print('error file type')
+            update_date_config(5, True)
             return JsonResponse({'success': False, 'error': 'Wrong Type of request'})
     except Exception as e:
-        update_date_config(5, None)
+        update_date_config(5, True)
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
 
@@ -31,10 +32,11 @@ def post_assignment(request):
             manage_assignment(file_path)
             return JsonResponse({'success': True})
         else:
-            update_date_config(4, None)
+            update_date_config(4, True)
+            print('error file type')
             return JsonResponse({'success': False, 'error': 'Wrong Type of request'})
     except Exception as e:
-        update_date_config(4, None)
+        update_date_config(4, True)
         print(e)
         return JsonResponse({'success': False, 'error': str(e)})
 
@@ -47,12 +49,13 @@ def post_db(request):
             print('New DB POST')
             file_path = handle_uploaded_file(request=request)
             manage_db(file_path)
-
+            
             return JsonResponse({'success': True})
         else:
-            update_date_config(3, None)
+            print('error file type')
+            update_date_config(3, True)
             return JsonResponse({'success': False, 'error': 'Wrong Type of request'})
     except Exception as e:
         print(e)
-        update_date_config(3, None)
+        update_date_config(3, True)
         return JsonResponse({'success': False, 'error': str(e)})

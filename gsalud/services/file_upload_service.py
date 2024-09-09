@@ -153,7 +153,7 @@ def manage_lots(file_path=''):
         update_date_config(5)
         return
     except Exception as e:
-        update_date_config(5,None)
+        update_date_config(5,True)
         print(e)
         return
 
@@ -267,7 +267,7 @@ def manage_assignment(file_path):
         update_date_config(4)
         return
     except Exception as e:
-        update_date_config(4,None)
+        update_date_config(4,True)
         print(e)
         return
 
@@ -414,6 +414,6 @@ def manage_db(file_path):
         update_date_config(3)
         return
     except Exception as e:
-        update_date_config(3,None)
         print(e)
+        update_date_config(3,True)
         return

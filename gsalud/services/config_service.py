@@ -17,7 +17,6 @@ def handle_config(id, newValue):
     """
 
     try:
-        new_date = datetime.now()
         config_obj, created = Config.objects.get_or_create(
             id=id, defaults={'value': newValue})
         if not created:
@@ -42,9 +41,16 @@ def handle_config(id, newValue):
     # Handle other potential exceptions (e.g., database errors) here
 
 
-def update_date_config(id, new_date=datetime.now()):
+def update_date_config(id, error=False):
     try:
-        Config.objects.filter(pk=id).update(mod_date=new_date)
+        new_date = datetime.now()
+        if error:
+            new_date = None
+        config_instance = Config.objects.get(pk=id)
+        config_instance.mod_date = new_date
+        print(config_instance.mod_date)
+        config_instance.save()
+        print(config_instance.mod_date)
 
     except Config.DoesNotExist:
         print('Error: Config with ID', id, 'does not exist.')
