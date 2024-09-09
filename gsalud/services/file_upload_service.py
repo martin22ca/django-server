@@ -275,7 +275,7 @@ def manage_assignment(file_path):
 @background(schedule=0)
 def manage_db(file_path):
     try:
-        print('Start Post DB')
+        print('Readind EXEL file')
         df, config_data = get_file_from_path(file_path, config_id=3)
 
         types_receipts = {}

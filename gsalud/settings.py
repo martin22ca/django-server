@@ -2,11 +2,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-# Load .env file
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env file
+load_dotenv(dotenv_path=(str(BASE_DIR)+'/.env'))
 
 
 def get_env_variable(var_name):
