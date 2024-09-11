@@ -20,6 +20,7 @@ def get_records_received():
                 output_field=BooleanField()
             ),
             id_provider=F('id_record__id_provider__id_provider'),
+            lot_key=F('id_lot__lot_key'),
             business_name=F('id_record__id_provider__business_name'),
             id_coordinator=F('id_record__id_provider__id_coordinator'),
             record_total=F('id_record__record_total'),
@@ -44,7 +45,7 @@ def get_records_received():
             'id_record', 'record_key', 'priority_case','id_provider', 'business_name',
             'id_coordinator', 'record_total','id_auditor', 'user_name','particularity_mixed',
             'date_assignment_audit', 'date_entry_digital','date_entry_physical', 
-            'seal_number', 'observation'
+            'seal_number', 'observation','lot_key'
         )
     except Exception as e:
         print(e)
