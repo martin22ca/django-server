@@ -24,7 +24,7 @@ def get_report(request):
         id_report = request.GET.dict()['id_report']
         print(request.GET.dict())
         base_queryset = reports.get(id_report)()
-        data = execute_query_with_filters(request, base_queryset)
+        data = execute_query_with_filters(request, base_queryset, limit=None)
         return JsonResponse({'success': True, 'data': data})
     except Exception as e:
         print(e)

@@ -104,7 +104,7 @@ sql_generators = {
 }
 
 
-def execute_query_with_filters(request, base_queryset, extra_values=None):
+def execute_query_with_filters(request, base_queryset, extra_values=None, limit=5000):
     try:
         with connection.cursor() as cursor:
             dataString = request.GET.dict()['filters']
@@ -133,7 +133,8 @@ def execute_query_with_filters(request, base_queryset, extra_values=None):
                 query_set = query_set.order_by(*order_by)
 
             # Limit the number of rows
-            query_set = query_set[:5000]
+            if limit: 
+                query_set = query_set[:limit]
 
             # Convert the QuerySet to a list
             if extra_values:
